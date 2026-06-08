@@ -1,0 +1,47 @@
+{
+  "version": 1,
+  "edges": [
+    {
+      "fromId": "durable/incidents/2026-05-12-gateway-outage",
+      "toId": "durable/services/api-gateway",
+      "type": "mentions",
+      "confidence": 0.7
+    },
+    {
+      "fromId": "durable/incidents/2026-05-12-gateway-outage",
+      "toId": "durable/companies/acme",
+      "type": "mentions",
+      "confidence": 0.7
+    },
+    {
+      "fromId": "durable/incidents/2026-05-12-gateway-outage",
+      "toId": "durable/decisions/0007-rate-limit",
+      "type": "caused_by",
+      "confidence": 1
+    },
+    {
+      "fromId": "durable/incidents/2026-05-12-gateway-outage",
+      "toId": "durable/people/alice",
+      "type": "resolved_by",
+      "confidence": 1
+    },
+    {
+      "fromId": "durable/incidents/2026-05-12-gateway-outage",
+      "toId": "durable/policies/incident-response",
+      "type": "mentions",
+      "confidence": 0.7
+    },
+    {
+      "fromId": "durable/incidents/2026-05-12-gateway-outage",
+      "toId": "durable/services/status-page",
+      "type": "mentions",
+      "confidence": 0.7
+    },
+    {
+      "fromId": "durable/incidents/2026-05-12-gateway-outage",
+      "toId": "durable/teams/platform",
+      "type": "mentions",
+      "confidence": 0.7
+    }
+  ]
+}

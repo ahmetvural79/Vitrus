@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 150" width="560" height="150" role="img" aria-label="Vitrus — your glass-box company brain">
+  <defs>
+    <linearGradient id="gTop" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#A5B4FC"/><stop offset="1" stop-color="#818CF8"/>
+    </linearGradient>
+    <linearGradient id="gLeft" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#6366F1"/><stop offset="1" stop-color="#4F46E5"/>
+    </linearGradient>
+    <linearGradient id="gRight" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4F46E5"/><stop offset="1" stop-color="#4338CA"/>
+    </linearGradient>
+    <radialGradient id="gCore" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#FDE68A"/><stop offset="0.55" stop-color="#F59E0B"/><stop offset="1" stop-color="#F59E0B" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="gWord" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#6366F1"/><stop offset="1" stop-color="#A855F7"/>
+    </linearGradient>
+    <filter id="glow" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="3.2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <!-- glass-box mark: isometric cube (3 translucent facets) with a glowing amber core (the brain inside the glass) -->
+  <g opacity="0.96" stroke="#4338CA" stroke-width="2" stroke-linejoin="round">
+    <polygon points="60,40 90,55 60,70 30,55" fill="url(#gTop)"/>
+    <polygon points="30,55 60,70 60,100 30,85" fill="url(#gLeft)"/>
+    <polygon points="90,55 90,85 60,100 60,70" fill="url(#gRight)"/>
+  </g>
+  <circle cx="60" cy="72" r="13" fill="url(#gCore)" filter="url(#glow)"/>
+  <circle cx="60" cy="72" r="4.5" fill="#FDE68A"/>
+
+  <!-- wordmark -->
+  <text x="124" y="82" font-family="ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Inter, Helvetica, Arial, sans-serif"
+        font-size="58" font-weight="800" letter-spacing="-1.5" fill="url(#gWord)">Vitrus</text>
+  <text x="126" y="112" font-family="ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Inter, Helvetica, Arial, sans-serif"
+        font-size="17" font-weight="500" letter-spacing="0.2" fill="#64748B">your glass-box company brain</text>
+</svg>

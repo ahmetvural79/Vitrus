@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "edges": [
+    {
+      "fromId": "durable/people/bob",
+      "toId": "durable/teams/platform",
+      "type": "mentions",
+      "confidence": 0.7
+    },
+    {
+      "fromId": "durable/people/bob",
+      "toId": "durable/decisions/0007-rate-limit",
+      "type": "mentions",
+      "confidence": 0.7
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "edges": [
+    {
+      "fromId": "durable/decisions/0007-rate-limit",
+      "toId": "durable/decisions/0003-rate-limit",
+      "type": "supersedes",
+      "confidence": 1
+    },
+    {
+      "fromId": "durable/decisions/0007-rate-limit",
+      "toId": "durable/people/bob",
+      "type": "decided_by",
+      "confidence": 1
+    },
+    {
+      "fromId": "durable/decisions/0007-rate-limit",
+      "toId": "durable/concepts/rate-limiting",
+      "type": "mentions",
+      "confidence": 0.7
+    }
+  ]
+}

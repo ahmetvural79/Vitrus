@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "edges": [
+    {
+      "fromId": "durable/people/carol",
+      "toId": "durable/companies/acme",
+      "type": "works_at",
+      "confidence": 1
+    },
+    {
+      "fromId": "durable/people/carol",
+      "toId": "durable/teams/platform",
+      "type": "advises",
+      "confidence": 1
+    }
+  ]
+}

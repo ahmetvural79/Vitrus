@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120" role="img" aria-label="Vitrus">
+  <defs>
+    <linearGradient id="t" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#A5B4FC"/><stop offset="1" stop-color="#818CF8"/></linearGradient>
+    <linearGradient id="l" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6366F1"/><stop offset="1" stop-color="#4F46E5"/></linearGradient>
+    <linearGradient id="r" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4F46E5"/><stop offset="1" stop-color="#4338CA"/></linearGradient>
+    <radialGradient id="c" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#FDE68A"/><stop offset="0.55" stop-color="#F59E0B"/><stop offset="1" stop-color="#F59E0B" stop-opacity="0"/></radialGradient>
+    <filter id="g" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>
+  <rect width="120" height="120" rx="26" fill="#0B1020"/>
+  <g opacity="0.97" stroke="#312E81" stroke-width="2.5" stroke-linejoin="round" transform="translate(0,2)">
+    <polygon points="60,28 92,46 60,64 28,46" fill="url(#t)"/>
+    <polygon points="28,46 60,64 60,100 28,82" fill="url(#l)"/>
+    <polygon points="92,46 92,82 60,100 60,64" fill="url(#r)"/>
+  </g>
+  <circle cx="60" cy="68" r="15" fill="url(#c)" filter="url(#g)"/>
+  <circle cx="60" cy="68" r="5" fill="#FDE68A"/>
+</svg>

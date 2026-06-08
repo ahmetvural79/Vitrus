@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "edges": [
+    {
+      "fromId": "working/meetings/2026-05-13-postmortem",
+      "toId": "durable/people/alice",
+      "type": "attended",
+      "confidence": 1
+    },
+    {
+      "fromId": "working/meetings/2026-05-13-postmortem",
+      "toId": "durable/people/bob",
+      "type": "attended",
+      "confidence": 1
+    },
+    {
+      "fromId": "working/meetings/2026-05-13-postmortem",
+      "toId": "durable/incidents/2026-05-12-gateway-outage",
+      "type": "mentions",
+      "confidence": 0.7
+    },
+    {
+      "fromId": "working/meetings/2026-05-13-postmortem",
+      "toId": "durable/decisions/0007-rate-limit",
+      "type": "contradicts",
+      "confidence": 1
+    }
+  ]
+}

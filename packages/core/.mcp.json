@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "vitrus": {
+      "command": "bun",
+      "args": ["run", "src/mcp/index.ts"],
+      "env": { "VITRUS_DATA": ".vitrus" }
+    }
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "edges": [
+    {
+      "fromId": "durable/people/alice",
+      "toId": "durable/teams/platform",
+      "type": "member_of",
+      "confidence": 1
+    },
+    {
+      "fromId": "durable/people/alice",
+      "toId": "durable/people/bob",
+      "type": "reports_to",
+      "confidence": 1
+    }
+  ]
+}

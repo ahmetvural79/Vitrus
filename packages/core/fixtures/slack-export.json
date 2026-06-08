@@ -1,0 +1,22 @@
+{
+  "channel": { "id": "C0PLATFORM", "name": "platform", "members": ["U0ALICE", "U0BOB"] },
+  "users": { "U0ALICE": "alice", "U0BOB": "bob" },
+  "messages": [
+    {
+      "ts": "1715500000.000100",
+      "user": "U0ALICE",
+      "text": "Gateway 503 dönüyor, rate-limit eşiği yüzünden olabilir. <@U0BOB> bakabilir misin?"
+    },
+    {
+      "ts": "1715500120.000200",
+      "user": "U0BOB",
+      "thread_ts": "1715500000.000100",
+      "text": "Evet, 0007 kararındaki yeni eşik. Geri alalım. <@U0ALICE> deploy eder misin?"
+    },
+    {
+      "ts": "1715600000.000300",
+      "user": "U0ALICE",
+      "text": "Postmortem yarın 15:00. Katılımcılar: <@U0ALICE>, <@U0BOB>."
+    }
+  ]
+}

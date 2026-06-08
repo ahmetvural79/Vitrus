@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.vitrus/
+.glassbox/
+*.tsbuildinfo
+.env
+.env.*
+.DS_Store
+*.log

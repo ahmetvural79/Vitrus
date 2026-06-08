@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "edges": [
+    {
+      "fromId": "durable/companies/acme",
+      "toId": "durable/people/carol",
+      "type": "mentions",
+      "confidence": 0.7
+    }
+  ]
+}

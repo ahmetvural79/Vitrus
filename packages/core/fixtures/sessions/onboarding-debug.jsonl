@@ -1,0 +1,5 @@
+{"role":"user","content":"Yeni başladım. Gateway neden ara sıra 503 veriyor?","timestamp":"2026-05-20T10:00:00Z"}
+{"role":"assistant","content":"İki olasılık var: rate-limit eşiği ya da upstream auth timeout. Önce rate-limit dalına bakalım."}
+{"role":"user","content":"Rate-limit değil; onu geçen hafta 1000 rps'e çektik."}
+{"role":"assistant","content":"O zaman rate-limit dalını eliyorum. api-gateway auth'a depends_on; auth token doğrulaması yavaşlarsa 503 üretir. Bu dalı araştıralım."}
+{"role":"user","content":"Evet, auth latency p99 fırlamış. Kök neden bu."}

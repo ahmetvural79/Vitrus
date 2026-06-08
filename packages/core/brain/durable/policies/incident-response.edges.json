@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "edges": [
+    {
+      "fromId": "durable/policies/incident-response",
+      "toId": "durable/teams/platform",
+      "type": "mentions",
+      "confidence": 0.7
+    },
+    {
+      "fromId": "durable/policies/incident-response",
+      "toId": "durable/services/api-gateway",
+      "type": "mentions",
+      "confidence": 0.7
+    },
+    {
+      "fromId": "durable/policies/incident-response",
+      "toId": "durable/decisions/0007-rate-limit",
+      "type": "mentions",
+      "confidence": 0.7
+    },
+    {
+      "fromId": "durable/policies/incident-response",
+      "toId": "durable/people/alice",
+      "type": "mentions",
+      "confidence": 0.7
+    }
+  ]
+}

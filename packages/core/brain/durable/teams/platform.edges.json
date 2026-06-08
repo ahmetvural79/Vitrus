@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "edges": [
+    {
+      "fromId": "durable/teams/platform",
+      "toId": "durable/services/api-gateway",
+      "type": "owns",
+      "confidence": 1
+    },
+    {
+      "fromId": "durable/teams/platform",
+      "toId": "durable/services/auth",
+      "type": "owns",
+      "confidence": 1
+    },
+    {
+      "fromId": "durable/teams/platform",
+      "toId": "durable/people/alice",
+      "type": "member_of",
+      "confidence": 0.9
+    },
+    {
+      "fromId": "durable/teams/platform",
+      "toId": "durable/people/bob",
+      "type": "member_of",
+      "confidence": 0.9
+    }
+  ]
+}

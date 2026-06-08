@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "edges": [
+    {
+      "fromId": "durable/services/api-gateway",
+      "toId": "durable/services/auth",
+      "type": "depends_on",
+      "confidence": 1
+    },
+    {
+      "fromId": "durable/services/api-gateway",
+      "toId": "durable/decisions/0007-rate-limit",
+      "type": "decided_by",
+      "confidence": 0.9
+    }
+  ]
+}

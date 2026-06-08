@@ -1,0 +1,24 @@
+{
+  "repo": "org/api-gateway",
+  "visibility": "private",
+  "items": [
+    {
+      "number": 42,
+      "type": "issue",
+      "title": "Rate-limit eşiği üretimde 503'e yol açıyor",
+      "body": "500 rps eşiği yoğun saatte aşılıyor. 0007 kararını gözden geçirelim.",
+      "author": "alice",
+      "url": "https://github.com/org/api-gateway/issues/42",
+      "createdAt": "2026-05-12T09:20:00Z"
+    },
+    {
+      "number": 43,
+      "type": "pr",
+      "title": "Rate-limit eşiğini geçici geri al",
+      "body": "Incident sonrası eşik 200 rps'e döndürüldü. Kalıcı çözüm bekleniyor.",
+      "author": "bob",
+      "url": "https://github.com/org/api-gateway/pull/43",
+      "createdAt": "2026-05-12T09:45:00Z"
+    }
+  ]
+}

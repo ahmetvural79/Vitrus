@@ -1,0 +1,54 @@
+{
+  "name": "@vitrus/core",
+  "version": "0.3.0",
+  "description": "Vitrus core — your glass-box company brain. Open-core (MIT): hybrid search + gap analysis + self-linking graph + MCP + SKILL.md. Source-of-truth markdown, ownable, agent-native.",
+  "type": "module",
+  "license": "MIT",
+  "bin": {
+    "vitrus": "src/cli/index.ts",
+    "vitrus-mcp": "src/mcp/index.ts"
+  },
+  "exports": {
+    ".": { "bun": "./src/cli/index.ts", "default": "./dist/cli/index.js" },
+    "./mcp": { "bun": "./src/mcp/index.ts", "default": "./dist/mcp/index.js" },
+    "./mcp-server": { "bun": "./src/mcp/server.ts", "default": "./dist/mcp/server.js" },
+    "./providers": { "bun": "./src/core/providers.ts", "default": "./dist/core/providers.js" },
+    "./engine": { "bun": "./src/core/engine.ts", "default": "./dist/core/engine.js" },
+    "./pglite-engine": { "bun": "./src/core/pglite-engine.ts", "default": "./dist/core/pglite-engine.js" },
+    "./postgres-engine": { "bun": "./src/core/postgres-engine.ts", "default": "./dist/core/postgres-engine.js" },
+    "./hashing-embedder": { "bun": "./src/core/hashing-embedder.ts", "default": "./dist/core/hashing-embedder.js" },
+    "./connectors": { "bun": "./src/connectors/index.ts", "default": "./dist/connectors/index.js" },
+    "./sql-driver": { "bun": "./src/core/sql-driver.ts", "default": "./dist/core/sql-driver.js" },
+    "./types": { "bun": "./src/core/types.ts", "default": "./dist/core/types.js" },
+    "./package.json": "./package.json"
+  },
+  "engines": {
+    "bun": ">=1.3.0"
+  },
+  "files": ["src", "migrations", "dist", "README.md", "LICENSE"],
+  "scripts": {
+    "dev": "bun run src/cli/index.ts",
+    "vitrus": "bun run src/cli/index.ts",
+    "mcp": "bun run src/mcp/index.ts",
+    "demo": "bun run demo/e2e.ts",
+    "eval": "bun run src/eval/run.ts",
+    "bench": "bun run src/eval/bench/run.ts",
+    "leak-test": "bun run src/security/run-leak-test.ts",
+    "cross-leak-test": "bun run src/security/run-cross-tenant-test.ts",
+    "test": "node --test --import tsx \"test/**/*.test.ts\"",
+    "typecheck": "tsc --noEmit",
+    "build": "tsc"
+  },
+  "dependencies": {
+    "@electric-sql/pglite": "^0.2.0",
+    "@modelcontextprotocol/sdk": "^1.12.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0",
+    "typescript": "^5.4.0",
+    "@types/node": "^20.0.0"
+  },
+  "optionalDependencies": {
+    "pg": "^8.11.0"
+  }
+}

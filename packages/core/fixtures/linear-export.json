@@ -1,0 +1,15 @@
+{
+  "source": "linear",
+  "visibility": "private",
+  "items": [
+    {
+      "id": "PLAT-128",
+      "type": "note",
+      "title": "Kalıcı rate-limit politikası tasarla",
+      "body": "12 Mayıs incident'inin takip işi. [[durable/incidents/2026-05-12-gateway-outage]] ile ilişkili; [[durable/decisions/0007-rate-limit]] gözden geçirilecek.",
+      "author": "alice",
+      "url": "https://linear.app/issue/PLAT-128",
+      "createdAt": "2026-05-13T10:00:00Z"
+    }
+  ]
+}

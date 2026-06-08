@@ -1,0 +1,17 @@
+{
+  "name": "vitrus",
+  "private": true,
+  "type": "module",
+  "description": "Vitrus — your glass-box company brain (open core). The MIT engine: hybrid search + gap analysis + self-linking graph + MCP + SKILL.md.",
+  "homepage": "https://vitrus.dev",
+  "license": "MIT",
+  "workspaces": ["packages/*"],
+  "engines": { "bun": ">=1.3.0" },
+  "scripts": {
+    "test": "cd packages/core && bun run test",
+    "typecheck": "cd packages/core && bun run typecheck",
+    "eval": "cd packages/core && bun run eval",
+    "leak-test": "cd packages/core && bun run leak-test",
+    "gates": "cd packages/core && bun run typecheck && bun run test && bun run eval && bun run leak-test"
+  }
+}

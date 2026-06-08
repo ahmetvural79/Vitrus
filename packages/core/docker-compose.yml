@@ -1,0 +1,20 @@
+# Vitrus self-host (tek-tenant). Veri kalıcı volume'da; beyin air-gapped çalışır.
+# Önce: `docker compose run --rm vitrus node dist/cli/index.js import /brain` (veya connector ingest).
+services:
+  vitrus:
+    build: .
+    ports:
+      - "3000:3000"
+    volumes:
+      - vitrus-data:/data
+      - ./brain:/brain:ro # kaynak-üstü markdown (salt-okuma)
+    environment:
+      # OAuth 2.1 Resource Server (boşsa açık/dev). Üretimde gerçek AS + JWT verifier.
+      VITRUS_AUTH_TOKENS: "${VITRUS_AUTH_TOKENS:-}"
+      VITRUS_RESOURCE: "${VITRUS_RESOURCE:-http://localhost:3000/mcp}"
+      # BYO LLM: embedder/synthesizer sağlayıcısı (varsayılan yerel/offline).
+      VITRUS_DATA: /data
+    restart: unless-stopped
+
+volumes:
+  vitrus-data:

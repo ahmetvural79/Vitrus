@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "edges": [
+    {
+      "fromId": "durable/services/auth",
+      "toId": "durable/teams/platform",
+      "type": "mentions",
+      "confidence": 0.7
+    }
+  ]
+}

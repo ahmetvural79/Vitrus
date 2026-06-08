@@ -1,0 +1,26 @@
+{
+  "source": "notion",
+  "visibility": "private",
+  "items": [
+    {
+      "id": "runbook-oncall",
+      "type": "policy",
+      "title": "On-call Runbook (Notion)",
+      "body": "On-call mühendisi incident'ı [[durable/teams/platform]] kanalında duyurur ve [[durable/policies/incident-response]] adımlarını izler.",
+      "author": "bob",
+      "url": "https://notion.so/runbook-oncall",
+      "createdAt": "2026-05-10T12:00:00Z",
+      "acl": ["group:eng", "group:oncall"]
+    },
+    {
+      "id": "rate-limit-rfc",
+      "type": "document",
+      "title": "Rate-limit RFC (Notion)",
+      "body": "500 rps kararının gerekçesi. Bkz. [[durable/decisions/0007-rate-limit]].",
+      "author": "alice",
+      "url": "https://notion.so/rate-limit-rfc",
+      "createdAt": "2026-05-09T09:00:00Z",
+      "acl": ["public"]
+    }
+  ]
+}
