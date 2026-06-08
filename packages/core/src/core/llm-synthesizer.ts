@@ -33,7 +33,7 @@ interface ChatResponse {
 }
 
 function notFound(query: string, lang?: string): string {
-  return lang === "en"
+  return lang !== "tr" // default English (main language); Turkish only when query is Turkish
     ? `No sourced content found in the brain for "${query}".`
     : `"${query}" için beyinde kaynaklı içerik bulunamadı.`;
 }

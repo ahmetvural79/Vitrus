@@ -41,10 +41,12 @@ test("ExtractiveSynthesizer: her cümle [n] ile kaynağa bağlı; stub atlanır"
   assert.equal(out.citations[0].slug, "durable/decisions/0007");
 });
 
-test("ExtractiveSynthesizer: kaynak yoksa dürüst 'bulunamadı'", async () => {
+test("ExtractiveSynthesizer: no source → honest 'not found' (English default, Turkish when lang=tr)", async () => {
   const out = await new ExtractiveSynthesizer().synthesize("x", []);
   assert.equal(out.citations.length, 0);
-  assert.match(out.answer, /bulunamadı/);
+  assert.match(out.answer, /No sourced content/); // default = English (main language)
+  const tr = await new ExtractiveSynthesizer().synthesize("x", [], { lang: "tr" });
+  assert.match(tr.answer, /bulunamadı/); // Turkish query → Turkish answer (multilingual)
 });
 
 test("scoreConfidence: kaynak artar/boşluk azalırsa yükselir; [0,1]", () => {

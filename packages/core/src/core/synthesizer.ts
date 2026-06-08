@@ -70,7 +70,7 @@ export class ExtractiveSynthesizer implements Synthesizer {
   constructor(private readonly maxFacts = 5) {}
 
   async synthesize(query: string, hits: SearchHit[], opts: SynthesizeOpts = {}): Promise<Synthesis> {
-    const en = opts.lang === "en";
+    const en = opts.lang !== "tr"; // default English (main language); Turkish only when query is Turkish
     // Stub/boş düğümleri sentezde kullanma (içerik yok).
     const usable = hits.filter((h) => h.node.content.trim().length > 0).slice(0, this.maxFacts);
     if (usable.length === 0) {
