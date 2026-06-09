@@ -14,7 +14,7 @@ all in **portable Markdown files you own**.
 [![runtime](https://img.shields.io/badge/runtime-Bun-black.svg)](https://bun.sh)
 [![scale](https://img.shields.io/badge/PGLite-→%20Postgres%2Bpgvector-4338CA.svg)](#scale-pglite--postgrespgvector)
 
-[vitrus.dev](https://vitrus.dev) · [Quickstart](#60-seconds) · [Why Vitrus](#why-vitrus--three-boundary-lines) · [MCP](#agent-native-mcp) · [Open core](#open-core)
+[vitrus.dev](https://vitrus.dev) · [Quickstart](#60-seconds) · [Docs](#documentation) · [Why Vitrus](#why-vitrus--three-boundary-lines) · [MCP](#agent-native-mcp) · [Open core](#open-core)
 
 </div>
 
@@ -136,6 +136,36 @@ bun run test           # 202 tests (node:test runner)
 bun run eval           # source-hit ≥90% + gap recall/precision 100%
 bun run leak-test      # unauthorized access = 0 (ACL fail-closed)
 ```
+
+## Documentation
+
+| Guide | What's inside |
+|---|---|
+| [Quickstart](./docs/QUICKSTART.md) | From zero to a queried brain in 60 seconds. |
+| [Architecture](./docs/ARCHITECTURE.md) | The 5 layers, hybrid search, the self-linking graph, invariants. |
+| [CLI reference](./docs/CLI.md) | Every `vitrus` command, grouped by what it does. |
+| [Providers](./docs/PROVIDERS.md) | Offline-default; plug in OpenAI/Ollama embedders, synthesizers, rerankers. |
+| [Scaling](./docs/SCALING.md) | PGLite → Postgres+pgvector, migrations, the job queue, multi-tenant RLS. |
+| [MCP](./docs/MCP.md) | Serve the brain to agents (stdio + HTTP); the tool set. |
+| [Examples](./examples/README.md) | Six runnable recipes — graph, gaps, verify, MCP, Postgres. |
+
+## Repository layout
+
+```
+packages/
+  core/     @vitrus/core — engine, hybrid search, gap analysis, CLI, connectors (MIT)
+    src/        the engine and CLI source (Bun runs TS directly, no build)
+    brain/      a sample brain you can `vitrus import`
+    migrations/ 0001..0006 (schema + RLS)
+    test/       the test + eval + leak-test suites
+  mcp/      @vitrus/mcp — the Model Context Protocol server (MIT)
+docs/       the guides linked above
+examples/   runnable recipes
+assets/     logo + icon
+```
+
+The commercial apps (managed cloud, dashboard, connectors UI) live in a separate, non-public repo —
+this repo is the **open core** you can self-host end-to-end.
 
 ## Open core
 
