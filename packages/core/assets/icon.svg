@@ -1,17 +1,38 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120" role="img" aria-label="Vitrus">
   <defs>
-    <linearGradient id="t" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#A5B4FC"/><stop offset="1" stop-color="#818CF8"/></linearGradient>
-    <linearGradient id="l" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6366F1"/><stop offset="1" stop-color="#4F46E5"/></linearGradient>
-    <linearGradient id="r" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4F46E5"/><stop offset="1" stop-color="#4338CA"/></linearGradient>
-    <radialGradient id="c" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#FDE68A"/><stop offset="0.55" stop-color="#F59E0B"/><stop offset="1" stop-color="#F59E0B" stop-opacity="0"/></radialGradient>
-    <filter id="g" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    <linearGradient id="t" x1="0" y1="0" x2="0.6" y2="1"><stop offset="0" stop-color="#D6EEFB"/><stop offset="1" stop-color="#9FD6F2"/></linearGradient>
+    <linearGradient id="l" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8FCBEC"/><stop offset="1" stop-color="#5FA8DA"/></linearGradient>
+    <linearGradient id="r" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#74B7E4"/><stop offset="1" stop-color="#4A8FC8"/></linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#FFF3C4"/><stop offset="0.4" stop-color="#F7C948" stop-opacity="0.85"/><stop offset="1" stop-color="#F7C948" stop-opacity="0"/></radialGradient>
+    <linearGradient id="star" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FDE68A"/><stop offset="1" stop-color="#F5A623"/></linearGradient>
   </defs>
-  <rect width="120" height="120" rx="26" fill="#0B1020"/>
-  <g opacity="0.97" stroke="#312E81" stroke-width="2.5" stroke-linejoin="round" transform="translate(0,2)">
-    <polygon points="60,28 92,46 60,64 28,46" fill="url(#t)"/>
-    <polygon points="28,46 60,64 60,100 28,82" fill="url(#l)"/>
-    <polygon points="92,46 92,82 60,100 60,64" fill="url(#r)"/>
+
+  <!-- isometric glass cube: 3 translucent faces -->
+  <g opacity="0.95">
+    <polygon points="60,16 102,40 60,64 18,40" fill="url(#t)"/>
+    <polygon points="18,40 60,64 60,108 18,84" fill="url(#l)"/>
+    <polygon points="102,40 102,84 60,108 60,64" fill="url(#r)"/>
   </g>
-  <circle cx="60" cy="68" r="15" fill="url(#c)" filter="url(#g)"/>
-  <circle cx="60" cy="68" r="5" fill="#FDE68A"/>
+  <!-- gem facet lines (face diagonals) -->
+  <g stroke="#BFE3F6" stroke-width="1" opacity="0.55" fill="none">
+    <path d="M60,16 L60,64 M18,40 L102,40"/>
+    <path d="M18,40 L60,108 M60,64 L18,84"/>
+    <path d="M102,40 L60,108 M60,64 L102,84"/>
+  </g>
+  <!-- cube edges -->
+  <g stroke="#3E83BC" stroke-width="2.4" stroke-linejoin="round" fill="none">
+    <polygon points="60,16 102,40 102,84 60,108 18,84 18,40"/>
+    <path d="M60,16 L60,64 M18,40 L60,64 M102,40 L60,64 M60,64 L60,108"/>
+  </g>
+
+  <!-- golden sparkle inside the glass -->
+  <circle cx="60" cy="62" r="26" fill="url(#glow)"/>
+  <g stroke="#F7C948" stroke-width="2" stroke-linecap="round" opacity="0.9">
+    <line x1="60" y1="34" x2="60" y2="42"/><line x1="60" y1="82" x2="60" y2="90"/>
+    <line x1="32" y1="62" x2="40" y2="62"/><line x1="80" y1="62" x2="88" y2="62"/>
+    <line x1="42" y1="44" x2="47" y2="49"/><line x1="73" y1="75" x2="78" y2="80"/>
+    <line x1="78" y1="44" x2="73" y2="49"/><line x1="47" y1="75" x2="42" y2="80"/>
+  </g>
+  <path d="M60,40 L65,57 L82,62 L65,67 L60,84 L55,67 L38,62 L55,57 Z" fill="url(#star)" stroke="#FFF6D8" stroke-width="0.8"/>
+  <circle cx="60" cy="62" r="3.2" fill="#FFF6D8"/>
 </svg>
