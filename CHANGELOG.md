@@ -3,6 +3,13 @@
 All notable changes to `@vitrus/core` and `@vitrus/mcp`. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com); this project uses date-based releases.
 
+## [Unreleased]
+
+### Added
+- **`@vitrus/core/verify` subpath export** — `verifyClaim(engine, claim)` is now importable directly
+  (deterministic grounded/stale/contradicted/unsupported verdicts), so hosts can fact-check agent
+  claims programmatically without going through the MCP tool.
+
 ## [0.3.0] — 2026-06
 
 ### Added

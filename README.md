@@ -14,9 +14,35 @@ all in **portable Markdown files you own**.
 [![runtime](https://img.shields.io/badge/runtime-Bun-black.svg)](https://bun.sh)
 [![scale](https://img.shields.io/badge/PGLite-→%20Postgres%2Bpgvector-4338CA.svg)](#scale-pglite--postgrespgvector)
 
-[vitrus.dev](https://vitrus.dev) · [Quickstart](#60-seconds) · [Docs](#documentation) · [Why Vitrus](#why-vitrus--three-boundary-lines) · [MCP](#agent-native-mcp) · [Open core](#open-core)
+**[🔮 Try the live demo](https://vitrus.dev#demo)** — no signup; ask it something it doesn't know and watch it *not* make things up.
+**[☁️ Cloud dashboard](https://app.vitrus.dev)** · [Quickstart](#60-seconds) · [Docs](#documentation) · [Why Vitrus](#why-vitrus--three-boundary-lines) · [MCP](#agent-native-mcp) · [Roadmap](https://github.com/ahmetvural79/Vitrus/issues)
 
 </div>
+
+---
+
+## What it looks like
+
+```text
+$ vitrus think "how was the payment outage resolved"
+
+The payment service returned 503s due to a gateway rate-limit breach.
+Resolved by raising the limit from 500 to 1000 rps [1], per the
+rate-limit decision [2].
+
+Sources:
+  [1] durable/runbooks/rate-limit
+  [2] durable/decisions/d-007
+
+⚠ What your brain doesn't know (1):
+  · "durable/companies/acme" is referenced but undocumented (missing)
+
+Confidence: 82% · oldest source: 12 days
+```
+
+That gap box is the whole point. Every answer ships with its **sources** and an honest,
+**deterministic** list of what your knowledge base *hasn't* documented — there is no LLM in the
+gap detector, so it can't hallucinate a gap into existence (or out of it).
 
 ---
 
@@ -55,6 +81,20 @@ Five gap kinds: **missing** (referenced but undocumented) · **contradiction** (
 
 And the newest surface — **proactive, not reactive**: `vitrus watch` turns gap analysis temporal (stale knowledge, unresolved incidents, aging gaps) and tells you *what needs attention* without being asked.
 
+## Verify — never trust self-report
+
+An agent (or a teammate) asserts something. Is it actually true *according to your record*?
+
+```bash
+vitrus verify "the rate limit for payments is 500 rps"
+# → STALE — supported by decisions/d-007, but superseded during the outage (now 1000 rps)
+```
+
+Four deterministic verdicts: **grounded** · **stale** · **contradicted** · **unsupported** — with the
+supporting sources and conflicts. No LLM judge; it's hybrid search + gap analysis over your own data.
+Also available programmatically (`@vitrus/core/verify` → `verifyClaim(engine, claim)`) and as an MCP
+tool, so your agents can fact-check **themselves** before acting.
+
 ---
 
 ## Providers (BYO-LLM)
@@ -89,14 +129,22 @@ Durable, crash-recovering job queue: `vitrus agent run "…" && vitrus agent wor
 
 ## Agent-native (MCP)
 
-Serve the brain to any agent over the Model Context Protocol — **stdio + Streamable HTTP**, with OAuth 2.1 Resource Server support:
+Serve the brain to any agent over the Model Context Protocol — **stdio + Streamable HTTP**, with OAuth 2.1 Resource Server support. Claude Code, Codex, Cursor and your own agents all share the same sourced, permission-aware memory your team uses:
 
 ```bash
-vitrus-mcp                 # stdio (Claude Code / Cursor)
+# self-hosted, stdio — one line into Claude Code / Cursor
+claude mcp add vitrus -- bunx @vitrus/mcp
+
+# or serve over HTTP
 vitrus-mcp --http 3000     # Streamable HTTP on :3000/mcp
+
+# cloud (managed): every org gets its own authenticated MCP endpoint
+claude mcp add --transport http vitrus \
+  https://api.vitrus.dev/t/<org>/mcp \
+  --header "Authorization: Bearer <token>"
 ```
 
-Tools: `search` · `think` · `gap_report` · `provenance` · `get_node` · `verify`. Git-Markdown sources are exposed as `vitrus://node/<slug>` resources.
+Tools: `search` · `think` · `gap_report` · `provenance` · `get_node` · `verify`. Git-Markdown sources are exposed as `vitrus://node/<slug>` resources. Agents see **only what the token's user is allowed to see** — ACL is enforced at the index layer, fail-closed.
 
 ## Comparison
 
@@ -107,6 +155,19 @@ Tools: `search` · `think` · `gap_report` · `provenance` · `get_node` · `ver
 | **Tells you what it doesn't know** | ✗ | ✗ | ✗ | **✓** |
 | Data ownership / portable | ✗ | ✗ | ✗ (lock-in) | **✓ (markdown)** |
 | Self-host / air-gapped | ✗ | ✗ | ✗ | **✓** |
+
+## Connect your tools
+
+The connector framework is in the core (MIT): one interface (`fetch()` → records with **content + ACL**),
+idempotent ingest, incremental prune, and **permission capture on every sync** — remove someone from a
+channel and their access is revoked on the next sync, automatically.
+
+Included adapters: **Slack** (threads → nodes, @mentions auto-linked to people) · **GitHub** (issues/PRs)
+· **Email** (participants become the ACL) · **Calendar** · a generic **Docs** adapter (Notion, Linear,
+Jira, Drive… all map to one shape) · an **MCP-source bridge** (any MCP server becomes a source).
+Everything funnels into **one brain**, so the same `alice` mentioned in Slack and authoring a PR fuses
+into a single graph node. The managed cloud adds live OAuth fetchers, a connector gallery and a
+real-time WhatsApp webhook on top of this exact framework.
 
 ---
 
@@ -180,8 +241,16 @@ this repo is the **open core** you can self-host end-to-end.
 
 `@vitrus/core` and `@vitrus/mcp` are **MIT** (see [LICENSE](./LICENSE)). The cloud apps are commercial.
 
+## Community
+
+- ⭐ **Star the repo** if the gap box resonates — it's how other teams find an honest brain.
+- 🗺️ [Roadmap & issues](https://github.com/ahmetvural79/Vitrus/issues) — real deferred work, openly tracked.
+- 🤝 [Contributing](./CONTRIBUTING.md) · 🔒 [Security policy](./SECURITY.md)
+
 <div align="center">
 
-**[vitrus.dev](https://vitrus.dev)**
+**[vitrus.dev](https://vitrus.dev)** · **[live demo](https://vitrus.dev#demo)** · **[cloud dashboard](https://app.vitrus.dev)**
+
+*Built for teams that want to trust their answers.*
 
 </div>

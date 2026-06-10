@@ -18,6 +18,7 @@
     "./postgres-engine": { "bun": "./src/core/postgres-engine.ts", "default": "./dist/core/postgres-engine.js" },
     "./hashing-embedder": { "bun": "./src/core/hashing-embedder.ts", "default": "./dist/core/hashing-embedder.js" },
     "./connectors": { "bun": "./src/connectors/index.ts", "default": "./dist/connectors/index.js" },
+    "./verify": { "bun": "./src/verify/verify.ts", "default": "./dist/verify/verify.js" },
     "./sql-driver": { "bun": "./src/core/sql-driver.ts", "default": "./dist/core/sql-driver.js" },
     "./types": { "bun": "./src/core/types.ts", "default": "./dist/core/types.js" },
     "./package.json": "./package.json"
