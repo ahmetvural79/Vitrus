@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="./assets/logo.svg" alt="Vitrus" width="440" />
+<img src="./assets/logo.svg?v=3" alt="Vitrus" width="440" />
 
 ### your glass-box company brain
 
