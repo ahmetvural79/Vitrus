@@ -10,6 +10,11 @@ All notable changes to `@vitrus/core` and `@vitrus/mcp`. Format loosely follows
   (deterministic grounded/stale/contradicted/unsupported verdicts), so hosts can fact-check agent
   claims programmatically without going through the MCP tool.
 
+### Changed
+- **README restructured** — community-first narrative (install paths, query modes, capabilities,
+  troubleshooting), a factual *Vitrus Cloud* section describing the hosted dashboard/connectors/MCP
+  endpoint, and a credit note to GBrain. Pricing/comparison marketing removed from the repo.
+
 ## [0.3.0] — 2026-06
 
 ### Added

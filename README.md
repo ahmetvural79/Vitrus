@@ -4,24 +4,21 @@
 
 ### your glass-box company brain
 
-**The brain that tells you not just what it *knows*, but what it *doesn't*.**
 Search hands you raw pages. Vitrus hands you **the answer + its sources + what it doesn't know** —
 all in **portable Markdown files you own**.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-6366F1.svg)](./LICENSE)
-[![tests](https://img.shields.io/badge/tests-202%20·%204%20gates-22c55e.svg)](#testing--gates)
-[![MCP](https://img.shields.io/badge/MCP-stdio%20%2B%20HTTP-A855F7.svg)](#agent-native-mcp)
+[![tests](https://img.shields.io/badge/tests-200%2B%20·%204%20gates-22c55e.svg)](#testing--gates)
+[![MCP](https://img.shields.io/badge/MCP-stdio%20%2B%20HTTP-A855F7.svg)](#agents-mcp)
 [![runtime](https://img.shields.io/badge/runtime-Bun-black.svg)](https://bun.sh)
-[![scale](https://img.shields.io/badge/PGLite-→%20Postgres%2Bpgvector-4338CA.svg)](#scale-pglite--postgrespgvector)
 
-**[🔮 Try the live demo](https://vitrus.dev#demo)** — no signup; ask it something it doesn't know and watch it *not* make things up.
-**[☁️ Cloud dashboard](https://app.vitrus.dev)** · [Quickstart](#60-seconds) · [Docs](#documentation) · [Why Vitrus](#why-vitrus--three-boundary-lines) · [MCP](#agent-native-mcp) · [Roadmap](https://github.com/ahmetvural79/Vitrus/issues)
+[Live demo](https://vitrus.dev#demo) · [Quickstart](#install) · [Docs](#docs) · [Architecture](#architecture) · [Cloud](#vitrus-cloud) · [Roadmap](https://github.com/ahmetvural79/Vitrus/issues)
 
 </div>
 
 ---
 
-## What it looks like
+## What this looks like
 
 ```text
 $ vitrus think "how was the payment outage resolved"
@@ -40,66 +37,98 @@ Sources:
 Confidence: 82% · oldest source: 12 days
 ```
 
-That gap box is the whole point. Every answer ships with its **sources** and an honest,
-**deterministic** list of what your knowledge base *hasn't* documented — there is no LLM in the
-gap detector, so it can't hallucinate a gap into existence (or out of it).
+That gap box is the point of the project. Every answer ships with its **sources** and an honest,
+**deterministic** list of what your knowledge base *hasn't* documented. There is no LLM in the gap
+detector, so it can't hallucinate a gap into existence — or out of it. A claim with no source is
+shown as a gap, never papered over.
 
----
+Three design rules hold everywhere:
 
-## 60 seconds
+- **Glass-box.** Every answer is *known / unknown (gap) / sourced*.
+- **Ownable.** The source of truth is Markdown + a typed-edge sidecar in git. The index is disposable
+  and rebuildable; delete it and your knowledge loses nothing.
+- **Agent-native.** The same brain serves humans (CLI, dashboard) and agents (MCP, Agent Skills) from
+  one permission-aware memory.
+
+## Install
+
+Pick your entry point:
 
 ```bash
-bunx @vitrus/core init --pglite     # zero-setup local brain (./.vitrus)
-vitrus import ./brain               # ingest markdown (embeds + a self-linking graph)
-vitrus think "how was the outage resolved"   # answer + [n] sources + GAP BOX + confidence
-vitrus watch                        # proactive: what needs your attention (stale, unresolved, aging gaps)
+# 1) Zero-setup local brain (PGLite, no database server)
+bunx @vitrus/core init --pglite     # creates ./.vitrus
+vitrus import ./brain               # ingest markdown (embeds + self-linking graph)
+vitrus think "how was the outage resolved"
+
+# 2) Wire it into Claude Code / Cursor as MCP — two commands
+git clone https://github.com/ahmetvural79/Vitrus && cd Vitrus/packages/core && bun install && bun link
+claude mcp add vitrus -- bunx @vitrus/mcp
+
+# 3) Team scale: same engine on Postgres + pgvector
+bun add pg
+VITRUS_PG_URL=postgres://user@host/db vitrus import ./brain
 ```
 
-> Signature output: alongside the answer, a **"what your brain doesn't know"** (gap) box.
-> **No one else in the market shows you this.**
+`vitrus doctor` prints backend, providers and health (it never leaks secrets).
 
-Developer setup (gbrain-style single command):
+## Two ways to query your brain
 
 ```bash
-git clone … && cd packages/core && bun install && bun link   # → the `vitrus` command, anywhere
-claude mcp add vitrus -- bunx @vitrus/mcp                     # wire into Claude Code / Cursor
+vitrus search "rate limit"     # hybrid retrieval: vector + BM25 + entity → RRF-fused hits
+vitrus think  "what is the payment rate limit and why"   # synthesized answer + sources + gap box + confidence
 ```
 
----
+`search` gives you ranked nodes; `think` gives you the answer with provenance. Both respect ACLs and
+both are honest about what isn't there.
 
-## Why Vitrus — three boundary lines
-
-- **🔍 Glass-box.** Every answer is *known / **unknown (gap)** / sourced*. A claim with no source is shown as a **gap**, never fabricated.
-- **📦 Ownable.** The source of truth is Markdown + a typed-edge sidecar in git. The index is **disposable and rebuildable**. No lock-in — leave whenever you want.
-- **🤖 Agent-native.** The output is an executable **Agent Skill (SKILL.md)** wired live to MCP. Humans and agents drink from the same trusted memory.
-
-## Signature feature: gap analysis
-
-Mem0, Zep, Glean — they all answer; **none tell you what they don't know.** This is Vitrus's single sharpest difference, and it's **deterministic and auditable** (no LLM, no fabrication): every gap is derived from graph structure or explicit text signals.
-
-Five gap kinds: **missing** (referenced but undocumented) · **contradiction** (conflicting edges) · **stale** (superseded) · **single-point** (bus-factor risk) · **uncited** (an event with no source).
-
-And the newest surface — **proactive, not reactive**: `vitrus watch` turns gap analysis temporal (stale knowledge, unresolved incidents, aging gaps) and tells you *what needs attention* without being asked.
-
-## Verify — never trust self-report
-
-An agent (or a teammate) asserts something. Is it actually true *according to your record*?
+And two that most tools don't have:
 
 ```bash
+vitrus watch    # proactive: stale knowledge, unresolved incidents, aging gaps — what needs attention
 vitrus verify "the rate limit for payments is 500 rps"
 # → STALE — supported by decisions/d-007, but superseded during the outage (now 1000 rps)
 ```
 
-Four deterministic verdicts: **grounded** · **stale** · **contradicted** · **unsupported** — with the
-supporting sources and conflicts. No LLM judge; it's hybrid search + gap analysis over your own data.
-Also available programmatically (`@vitrus/core/verify` → `verifyClaim(engine, claim)`) and as an MCP
-tool, so your agents can fact-check **themselves** before acting.
+`verify` returns one of four deterministic verdicts — **grounded · stale · contradicted ·
+unsupported** — with supporting sources and conflicts. No LLM judge; it's hybrid search + gap
+analysis over your own record. Also available programmatically (`@vitrus/core/verify`) and as an MCP
+tool, so agents can fact-check **themselves** before acting.
 
----
+## How to get data in
 
-## Providers (BYO-LLM)
+Markdown is canonical — anything that becomes Markdown becomes knowledge:
 
-Offline-deterministic by default (no key needed), **or** production providers — all env-driven, one interface:
+```bash
+vitrus import ./brain          # a folder of .md files (+ optional .edges.json sidecars)
+```
+
+The connector framework is in the core (MIT): one interface (`fetch()` → records with **content +
+ACL**), idempotent ingest, incremental prune, and **permission capture on every sync** — remove
+someone from a channel and their access is revoked on the next sync, automatically.
+
+Included adapters: **Slack** (threads → nodes, @mentions auto-linked to people) · **GitHub**
+(issues/PRs) · **Email** (participants become the ACL) · **Calendar** · a generic **Docs** adapter
+(Notion, Linear, Jira, Drive… map to one shape) · an **MCP-source bridge** (any MCP server becomes a
+source). Everything funnels into **one brain**, so the same `alice` mentioned in Slack and authoring
+a PR fuses into a single graph node.
+
+## Capabilities
+
+- **Gap analysis** — five deterministic kinds: *missing* (referenced but undocumented), *contradiction*
+  (conflicting edges), *stale* (superseded), *single-point* (bus-factor risk), *uncited* (event with no
+  source). Derived from graph structure and explicit text signals only.
+- **Self-linking graph** — `[[type::slug]]` typed edges, extracted without an LLM; bi-temporal
+  (valid-time + record-time), so "what did we believe then" is answerable.
+- **Hybrid retrieval** — vector + BM25 + entity match, RRF-fused; optional reranker.
+- **Provenance everywhere** — every claim traces to node → chunk → source URI.
+- **ACL, fail-closed** — enforced at the index layer; unauthorized content never appears in results.
+- **Confidence + freshness** — every answer carries a confidence score and oldest-source age.
+- **Durable job queue** — `vitrus agent run "…" && vitrus agent work && vitrus jobs` (crash-recovering).
+
+### Providers (BYO-LLM)
+
+Offline-deterministic by default — no API key needed. Production providers are env-driven, one
+interface:
 
 | | Providers | Env |
 |---|---|---|
@@ -107,69 +136,23 @@ Offline-deterministic by default (no key needed), **or** production providers �
 | **Synthesizer** | OpenAI · Anthropic · Gemini · Ollama (local) · offline extractive | `VITRUS_SYNTH_PROVIDER` |
 | **Reranker** | Cohere · Voyage · ZeroEntropy · lexical (default off) | `VITRUS_RERANK_PROVIDER` |
 
-```bash
-VITRUS_EMBED_PROVIDER=gemini GEMINI_API_KEY=… \
-VITRUS_RERANK_PROVIDER=cohere COHERE_API_KEY=… vitrus think "…"
-vitrus doctor      # backend + provider + health report (never leaks secrets)
-```
+With a production embedder the brain is multilingual: ask in one language, retrieve sources written
+in another.
 
-> Multilingual brain: with a production embedder, ask in one language and retrieve sources in another. The answer follows your query's language; the corpus is language-agnostic.
+## Agents (MCP)
 
-## Scale: PGLite → Postgres+pgvector
-
-Personal/dev = zero-setup PGLite (WASM). Team/scale = Postgres+pgvector — **same SQL, same engine**:
+Serve the brain to any agent over the Model Context Protocol — **stdio + Streamable HTTP**, with
+OAuth 2.1 Resource Server support:
 
 ```bash
-VITRUS_PG_URL=postgres://user@host/db vitrus import ./brain    # first: bun add pg
+claude mcp add vitrus -- bunx @vitrus/mcp     # stdio, one line
+vitrus-mcp --http 3000                        # or Streamable HTTP on :3000/mcp
 ```
 
-Durable, crash-recovering job queue: `vitrus agent run "…" && vitrus agent work && vitrus jobs`.
-
----
-
-## Agent-native (MCP)
-
-Serve the brain to any agent over the Model Context Protocol — **stdio + Streamable HTTP**, with OAuth 2.1 Resource Server support. Claude Code, Codex, Cursor and your own agents all share the same sourced, permission-aware memory your team uses:
-
-```bash
-# self-hosted, stdio — one line into Claude Code / Cursor
-claude mcp add vitrus -- bunx @vitrus/mcp
-
-# or serve over HTTP
-vitrus-mcp --http 3000     # Streamable HTTP on :3000/mcp
-
-# cloud (managed): every org gets its own authenticated MCP endpoint
-claude mcp add --transport http vitrus \
-  https://api.vitrus.dev/t/<org>/mcp \
-  --header "Authorization: Bearer <token>"
-```
-
-Tools: `search` · `think` · `gap_report` · `provenance` · `get_node` · `verify`. Git-Markdown sources are exposed as `vitrus://node/<slug>` resources. Agents see **only what the token's user is allowed to see** — ACL is enforced at the index layer, fail-closed.
-
-## Comparison
-
-| | Plain search | ChatGPT | Glean | **Vitrus** |
-|---|---|---|---|---|
-| Answer (not pages) | ✗ | ✓ | ✓ | ✓ |
-| Source / provenance | partial | weak | ✓ | ✓ |
-| **Tells you what it doesn't know** | ✗ | ✗ | ✗ | **✓** |
-| Data ownership / portable | ✗ | ✗ | ✗ (lock-in) | **✓ (markdown)** |
-| Self-host / air-gapped | ✗ | ✗ | ✗ | **✓** |
-
-## Connect your tools
-
-The connector framework is in the core (MIT): one interface (`fetch()` → records with **content + ACL**),
-idempotent ingest, incremental prune, and **permission capture on every sync** — remove someone from a
-channel and their access is revoked on the next sync, automatically.
-
-Included adapters: **Slack** (threads → nodes, @mentions auto-linked to people) · **GitHub** (issues/PRs)
-· **Email** (participants become the ACL) · **Calendar** · a generic **Docs** adapter (Notion, Linear,
-Jira, Drive… all map to one shape) · an **MCP-source bridge** (any MCP server becomes a source).
-Everything funnels into **one brain**, so the same `alice` mentioned in Slack and authoring a PR fuses
-into a single graph node. The managed cloud adds live OAuth fetchers, a connector gallery and a
-real-time WhatsApp webhook on top of this exact framework.
-
----
+Tools: `search` · `think` · `gap_report` · `provenance` · `get_node` · `verify`. Markdown sources are
+exposed as `vitrus://node/<slug>` resources. Agents see **only what the token's user is allowed to
+see** — ACL is enforced at the index layer, fail-closed. The output of an import can also be an
+executable **Agent Skill (SKILL.md)** wired live to MCP.
 
 ## Architecture
 
@@ -182,10 +165,13 @@ engine            PGLite / Postgres+pgvector · hybrid search (vector + BM25 + e
       ↓                                       · self-linking graph ([[type::slug]], LLM-free) · bi-temporal edges
 trust surface     gap analysis · provenance · verify · confidence · attention
       ↓
-presentation      CLI · MCP (stdio + HTTP) · SKILL.md export
+presentation      CLI · MCP (stdio + HTTP) · SKILL.md export · web dashboard (cloud)
 ```
 
-Invariants: **Markdown is canonical** (reset index → rebuild → answer unchanged). **The graph is LLM-free.** **Gaps are deterministic.** **ACL is fail-closed.**
+Two engines, one contract: **PGLite** (WASM, zero-setup) for personal brains, **Postgres+pgvector**
+for teams — same SQL, same engine, same answers. Invariants: **Markdown is canonical** (reset index →
+rebuild → answer unchanged). **The graph is LLM-free.** **Gaps are deterministic.** **ACL is
+fail-closed.**
 
 ## Testing & gates
 
@@ -193,17 +179,28 @@ Runs on **Bun** (no build step). Four CI gates, all green:
 
 ```bash
 bun run typecheck      # strict tsc
-bun run test           # 202 tests (node:test runner)
+bun run test           # 200+ tests (node:test runner)
 bun run eval           # source-hit ≥90% + gap recall/precision 100%
 bun run leak-test      # unauthorized access = 0 (ACL fail-closed)
 ```
 
-## Documentation
+## Troubleshooting
+
+| Symptom | Fix |
+|---|---|
+| `vitrus: command not found` | `cd packages/core && bun link` (or use `bunx @vitrus/core`) |
+| Answers feel weak in non-English | Set a production embedder: `VITRUS_EMBED_PROVIDER=openai` + key (default hashing embedder is language-naive) |
+| `pg` errors on import | Team scale needs `bun add pg` and a reachable `VITRUS_PG_URL` (PGLite needs neither) |
+| MCP server not showing tools | Check `claude mcp list`; for HTTP, the endpoint is `/mcp` and auth is `Authorization: Bearer <token>` |
+| "is my index stale?" | The index is disposable: `vitrus reset && vitrus import ./brain` rebuilds everything from Markdown |
+| Anything else | `vitrus doctor` first — it reports backend, providers and health without leaking secrets |
+
+## Docs
 
 | Guide | What's inside |
 |---|---|
 | [Quickstart](./docs/QUICKSTART.md) | From zero to a queried brain in 60 seconds. |
-| [Architecture](./docs/ARCHITECTURE.md) | The 5 layers, hybrid search, the self-linking graph, invariants. |
+| [Architecture](./docs/ARCHITECTURE.md) | The layers, hybrid search, the self-linking graph, invariants. |
 | [CLI reference](./docs/CLI.md) | Every `vitrus` command, grouped by what it does. |
 | [Providers](./docs/PROVIDERS.md) | Offline-default; plug in OpenAI/Ollama embedders, synthesizers, rerankers. |
 | [Scaling](./docs/SCALING.md) | PGLite → Postgres+pgvector, migrations, the job queue, multi-tenant RLS. |
@@ -217,7 +214,7 @@ packages/
   core/     @vitrus/core — engine, hybrid search, gap analysis, CLI, connectors (MIT)
     src/        the engine and CLI source (Bun runs TS directly, no build)
     brain/      a sample brain you can `vitrus import`
-    migrations/ 0001..0006 (schema + RLS)
+    migrations/ schema + row-level security
     test/       the test + eval + leak-test suites
   mcp/      @vitrus/mcp — the Model Context Protocol server (MIT)
 docs/       the guides linked above
@@ -225,27 +222,53 @@ examples/   runnable recipes
 assets/     logo + icon
 ```
 
-The commercial apps (managed cloud, dashboard, connectors UI) live in a separate, non-public repo —
-this repo is the **open core** you can self-host end-to-end.
+This repo is the **open core**: everything above is MIT and self-hostable end-to-end, with no feature
+flags and no fake "community edition". Gap analysis is never gated.
 
-## Open core
+## Vitrus Cloud
 
-**Capability is free; scale + trust are paid.**
+There is also a hosted version at **[app.vitrus.dev](https://app.vitrus.dev)** — the same MIT engine
+in this repo, deployed multi-tenant, for teams that don't want to run their own. What it adds is
+operations, not capability:
 
-- **`@vitrus/core` + `@vitrus/mcp` → MIT.** Full engine, gap analysis, MCP, CLI, connectors, self-host. Real and unrestricted — no fake "community edition."
-- **Cloud (managed connectors, dashboard, team/ACL, audit) → commercial.** The *same engine*, deployed multi-tenant.
+- **Web dashboard** — Ask, **Gap Explorer**, knowledge **Graph**, **Entities**, **Verify**, and
+  trace-to-source on every answer.
+- **Managed connectors** — a gallery of 13 sources (Slack, GitHub, Notion, Linear, Google Drive,
+  WhatsApp webhook, …) with stored credentials, scheduled sync and per-sync permission capture.
+- **A per-org MCP endpoint** — `https://api.vitrus.dev/t/<org>/mcp` with bearer auth, so Claude
+  Code/Cursor/your agents read the same brain your team does:
 
-**Gap analysis is never gated.** Money comes from hosting, managed connectors, teams and compliance — never from holding your data hostage.
+  ```bash
+  claude mcp add --transport http vitrus \
+    https://api.vitrus.dev/t/<org>/mcp \
+    --header "Authorization: Bearer <token>"
+  ```
 
-## License
+- **Team & ACL management** — roles (admin/member/viewer), seat-based membership, and an audit log of
+  who asked what.
+- **Account & support** — self-serve workspace administration and a built-in support desk (available
+  on every account, including free ones).
 
-`@vitrus/core` and `@vitrus/mcp` are **MIT** (see [LICENSE](./LICENSE)). The cloud apps are commercial.
+Signing up is free and gives you account + support access; the dashboard's brain surfaces run on paid
+seats. Either way there is no lock-in by design: your knowledge stays portable Markdown, and leaving
+the cloud means `vitrus import` on your own machine.
 
-## Community
+## Contributing
 
-- ⭐ **Star the repo** if the gap box resonates — it's how other teams find an honest brain.
-- 🗺️ [Roadmap & issues](https://github.com/ahmetvural79/Vitrus/issues) — real deferred work, openly tracked.
-- 🤝 [Contributing](./CONTRIBUTING.md) · 🔒 [Security policy](./SECURITY.md)
+Issues and PRs welcome — the [roadmap](https://github.com/ahmetvural79/Vitrus/issues) is real deferred
+work, openly tracked. See [CONTRIBUTING.md](./CONTRIBUTING.md) and the
+[security policy](./SECURITY.md). The fastest way to help: try the quickstart, and file an issue for
+anything that didn't take 60 seconds.
+
+## License + credit
+
+`@vitrus/core` and `@vitrus/mcp` are **MIT** (see [LICENSE](./LICENSE)). The cloud apps (dashboard,
+multi-tenant API) live in a separate non-public repo.
+
+Vitrus draws on ideas explored by [GBrain](https://github.com/garrytan/gbrain) — Markdown-canonical
+memory and an LLM-free typed graph — implemented independently here with its own engine and a
+different emphasis: the gap box. If GBrain's shape fits you better, use it; honest memory winning in
+any form is the point.
 
 <div align="center">
 

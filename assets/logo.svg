@@ -1,36 +1,45 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 150" width="560" height="150" role="img" aria-label="Vitrus — your glass-box company brain">
   <defs>
-    <linearGradient id="t" x1="0" y1="0" x2="0.6" y2="1"><stop offset="0" stop-color="#D6EEFB"/><stop offset="1" stop-color="#9FD6F2"/></linearGradient>
-    <linearGradient id="l" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8FCBEC"/><stop offset="1" stop-color="#5FA8DA"/></linearGradient>
-    <linearGradient id="r" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#74B7E4"/><stop offset="1" stop-color="#4A8FC8"/></linearGradient>
-    <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#FFF3C4"/><stop offset="0.4" stop-color="#F7C948" stop-opacity="0.85"/><stop offset="1" stop-color="#F7C948" stop-opacity="0"/></radialGradient>
-    <linearGradient id="star" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FDE68A"/><stop offset="1" stop-color="#F5A623"/></linearGradient>
+    <linearGradient id="t" x1="0" y1="0" x2="0.6" y2="1"><stop offset="0" stop-color="#D9EFFB"/><stop offset="1" stop-color="#A9D8F0"/></linearGradient>
+    <linearGradient id="l" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9FD0EC"/><stop offset="1" stop-color="#6FB1DE"/></linearGradient>
+    <linearGradient id="r" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8CC4E6"/><stop offset="1" stop-color="#5C9FD2"/></linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#FFF3C4"/><stop offset="0.45" stop-color="#F7C948" stop-opacity="0.8"/><stop offset="1" stop-color="#F7C948" stop-opacity="0"/></radialGradient>
+    <linearGradient id="star" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FBD45C"/><stop offset="1" stop-color="#F0A91F"/></linearGradient>
     <linearGradient id="word" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#8FCBEC"/><stop offset="0.55" stop-color="#A5B4FC"/><stop offset="1" stop-color="#C084FC"/></linearGradient>
   </defs>
 
-  <!-- mark (cube + golden sparkle), placed at left -->
+  <!-- mark: glass cube with the golden star INSIDE (see assets/icon.svg) -->
   <g transform="translate(8,15)">
-    <g opacity="0.95">
-      <polygon points="60,16 102,40 60,64 18,40" fill="url(#t)"/>
-      <polygon points="18,40 60,64 60,108 18,84" fill="url(#l)"/>
-      <polygon points="102,40 102,84 60,108 60,64" fill="url(#r)"/>
+    <g opacity="0.96">
+      <polygon points="60,14 102,38 60,62 18,38" fill="url(#t)"/>
+      <polygon points="18,38 60,62 60,110 18,86" fill="url(#l)"/>
+      <polygon points="102,38 102,86 60,110 60,62" fill="url(#r)"/>
     </g>
-    <g stroke="#BFE3F6" stroke-width="1" opacity="0.55" fill="none">
-      <path d="M60,16 L60,64 M18,40 L102,40 M18,40 L60,108 M60,64 L18,84 M102,40 L60,108 M60,64 L102,84"/>
+    <g fill="#FFFFFF">
+      <polygon points="60,14 102,38 60,38" opacity="0.14"/>
+      <polygon points="60,14 18,38 60,38" opacity="0.08"/>
+      <polygon points="18,86 60,62 60,110" opacity="0.10"/>
+      <polygon points="102,38 102,86 60,62" opacity="0.07"/>
     </g>
-    <g stroke="#3E83BC" stroke-width="2.4" stroke-linejoin="round" fill="none">
-      <polygon points="60,16 102,40 102,84 60,108 18,84 18,40"/>
-      <path d="M60,16 L60,64 M18,40 L60,64 M102,40 L60,64 M60,64 L60,108"/>
+    <g stroke="#CFE9F8" stroke-width="1.2" opacity="0.6" fill="none">
+      <path d="M18,38 L102,38 M18,86 L102,86"/>
     </g>
-    <circle cx="60" cy="62" r="26" fill="url(#glow)"/>
-    <g stroke="#F7C948" stroke-width="2" stroke-linecap="round" opacity="0.9">
-      <line x1="60" y1="34" x2="60" y2="42"/><line x1="60" y1="82" x2="60" y2="90"/>
-      <line x1="32" y1="62" x2="40" y2="62"/><line x1="80" y1="62" x2="88" y2="62"/>
-      <line x1="42" y1="44" x2="47" y2="49"/><line x1="73" y1="75" x2="78" y2="80"/>
-      <line x1="78" y1="44" x2="73" y2="49"/><line x1="47" y1="75" x2="42" y2="80"/>
+    <g stroke="#8FC3E4" stroke-width="1.7" opacity="0.85" fill="none">
+      <path d="M60,14 L60,62 M18,86 L60,62 M102,86 L60,62"/>
     </g>
-    <path d="M60,40 L65,57 L82,62 L65,67 L60,84 L55,67 L38,62 L55,57 Z" fill="url(#star)" stroke="#FFF6D8" stroke-width="0.8"/>
-    <circle cx="60" cy="62" r="3.2" fill="#FFF6D8"/>
+    <g stroke="#4E94C9" stroke-width="2" stroke-linejoin="round" fill="none">
+      <path d="M18,38 L60,62 M102,38 L60,62 M60,62 L60,110"/>
+    </g>
+    <polygon points="60,14 102,38 102,86 60,110 18,86 18,38" fill="none" stroke="#2E7CB8" stroke-width="3" stroke-linejoin="round"/>
+    <circle cx="60" cy="62" r="28" fill="url(#glow)"/>
+    <g stroke="#F0B429" stroke-width="2" stroke-linecap="round" opacity="0.95">
+      <line x1="40" y1="42" x2="48" y2="50"/><line x1="72" y1="74" x2="80" y2="82"/>
+      <line x1="80" y1="42" x2="72" y2="50"/><line x1="48" y1="74" x2="40" y2="82"/>
+      <line x1="34" y1="62" x2="43" y2="62"/><line x1="77" y1="62" x2="86" y2="62"/>
+      <line x1="66" y1="38" x2="70" y2="44"/><line x1="54" y1="86" x2="50" y2="80"/>
+      <line x1="51" y1="36" x2="54" y2="42"/><line x1="69" y1="88" x2="66" y2="82"/>
+    </g>
+    <path d="M60,32 L66.5,55.5 L84,62 L66.5,68.5 L60,92 L53.5,68.5 L36,62 L53.5,55.5 Z" fill="url(#star)" stroke="#FFE9A8" stroke-width="1"/>
   </g>
 
   <!-- wordmark -->
