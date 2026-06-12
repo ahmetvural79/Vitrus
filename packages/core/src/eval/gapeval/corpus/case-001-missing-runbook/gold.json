@@ -1,0 +1,6 @@
+{
+  "name": "Missing runbook referenced from an incident",
+  "expected_gaps": [
+    { "kind": "missing", "match": "database-failover" }
+  ]
+}

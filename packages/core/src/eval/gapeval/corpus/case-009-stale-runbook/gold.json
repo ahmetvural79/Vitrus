@@ -1,0 +1,6 @@
+{
+  "name": "Superseded cache-flush runbook",
+  "expected_gaps": [
+    { "kind": "stale", "match": "cache-flush-v1" }
+  ]
+}

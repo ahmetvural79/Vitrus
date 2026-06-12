@@ -1,0 +1,6 @@
+{
+  "name": "Vendor contract knowledge concentrated in one person",
+  "expected_gaps": [
+    { "kind": "single_point", "match": "vendor-contract-renewal" }
+  ]
+}

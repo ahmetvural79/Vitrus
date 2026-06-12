@@ -1,0 +1,6 @@
+{
+  "name": "Escalation matrix lives in one person's head",
+  "expected_gaps": [
+    { "kind": "single_point", "match": "sam" }
+  ]
+}

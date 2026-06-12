@@ -1,0 +1,6 @@
+{
+  "name": "Single-valued works_at points at two companies",
+  "expected_gaps": [
+    { "kind": "contradiction", "match": "dana" }
+  ]
+}

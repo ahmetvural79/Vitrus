@@ -538,6 +538,27 @@ async function main() {
       console.log(renderConfig(resolveConfig(pgUrl ? { ...process.env, VITRUS_PG_URL: pgUrl } : process.env)));
       break;
 
+    case "bench": {
+      // Benchmark dispatcher. gapeval süreç-içi koşar (her vaka için taze izole motor).
+      // NOT: genel bayrak ayıklayıcı (--out vb.) rest'i değiştirdiği için HAM argv kullanılır.
+      const raw = process.argv.slice(2); // ["bench", <suite>, ...bayraklar]
+      const suite = raw[1];
+      if (suite === "gapeval") {
+        const { main: gapevalMain } = await import("../eval/gapeval/run.js");
+        const code = await gapevalMain(raw.slice(2));
+        await engine.close();
+        process.exit(code);
+      }
+      console.log(
+        [
+          "usage: vitrus bench gapeval [--out <path>] [--negative-control] [--determinism] [--case <substr>]",
+          "  gapeval: gap-detection quality vs the gold-labeled corpus (src/eval/gapeval/corpus)",
+          "  the retrieval benchmark (recall/accuracy/latency) runs via: bun run bench",
+        ].join("\n")
+      );
+      break;
+    }
+
     case "version":
     case "--version":
     case "-v": {
@@ -549,7 +570,7 @@ async function main() {
 
     default:
       console.log(
-        "usage: vitrus <init | import <dir> | ingest <slack|github|sessions|email|calendar|notion|linear|jira|drive> <fixture> | webhook <connector> <event> | sync <dir> | search <q> [--as <user>] [--scope <x>] [--postgres <url>] | think <q> [--html f|--json] [--scope <x>] | verify <claim> [--as <user>] | gaps | entities | dedup | dream | purge [days] | audit [<slug>] | dashboard [--html f] [--graph] | chunks <slug> [q] | agent run <q> | agent work [--max N] | jobs | doctor | config | version | skill <topic> [--publish --out <dir> | --eval] | skill-eval <name> [--out <dir>] | skill-curate [--out <dir>] | skill-optimize <name> [--apply --out <dir>] | mcp [--http <port>]>"
+        "usage: vitrus <init | import <dir> | ingest <slack|github|sessions|email|calendar|notion|linear|jira|drive> <fixture> | webhook <connector> <event> | sync <dir> | search <q> [--as <user>] [--scope <x>] [--postgres <url>] | think <q> [--html f|--json] [--scope <x>] | verify <claim> [--as <user>] | gaps | entities | dedup | dream | purge [days] | audit [<slug>] | dashboard [--html f] [--graph] | chunks <slug> [q] | agent run <q> | agent work [--max N] | jobs | bench gapeval [--out <f> --negative-control --determinism] | doctor | config | version | skill <topic> [--publish --out <dir> | --eval] | skill-eval <name> [--out <dir>] | skill-curate [--out <dir>] | skill-optimize <name> [--apply --out <dir>] | mcp [--http <port>]>"
       );
   }
 

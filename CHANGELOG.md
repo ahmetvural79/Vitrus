@@ -6,6 +6,12 @@ All notable changes to `@vitrus/core` and `@vitrus/mcp`. Format loosely follows
 ## [Unreleased]
 
 ### Added
+- **Gap-Eval v0 benchmark** — `vitrus bench gapeval` (also `bun run gapeval`): an open, gold-labeled
+  corpus (18 cases, all 5 gap kinds + clean negative controls) with per-kind precision/recall/F1,
+  a zero-false-positive negative-control gate and a determinism gate (two runs on fresh engines must
+  produce byte-identical gaps). Flags: `--out`, `--negative-control`, `--determinism`, `--case`.
+  v0 scorecard: 100% recall/precision on the controlled corpus, 0 negative-control FPs, determinism
+  PASS — methodology and honest-framing notes ship in the report itself.
 - **`@vitrus/core/verify` subpath export** — `verifyClaim(engine, claim)` is now importable directly
   (deterministic grounded/stale/contradicted/unsupported verdicts), so hosts can fact-check agent
   claims programmatically without going through the MCP tool.

@@ -1,0 +1,6 @@
+{
+  "name": "Two architecture decisions explicitly contradict",
+  "expected_gaps": [
+    { "kind": "contradiction", "match": "0014-single-region" }
+  ]
+}

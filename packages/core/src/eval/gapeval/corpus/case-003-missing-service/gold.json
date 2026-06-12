@@ -1,0 +1,6 @@
+{
+  "name": "Missing service referenced from a payment incident",
+  "expected_gaps": [
+    { "kind": "missing", "match": "billing-worker" }
+  ]
+}

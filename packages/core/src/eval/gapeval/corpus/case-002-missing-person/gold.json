@@ -1,0 +1,6 @@
+{
+  "name": "Missing person referenced from an onboarding document",
+  "expected_gaps": [
+    { "kind": "missing", "match": "priya" }
+  ]
+}

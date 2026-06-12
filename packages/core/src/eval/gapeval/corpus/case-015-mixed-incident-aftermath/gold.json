@@ -1,0 +1,8 @@
+{
+  "name": "Incident aftermath: stale decision, missing status page, unsourced postmortem",
+  "expected_gaps": [
+    { "kind": "stale", "match": "0030-index-rebuild" },
+    { "kind": "missing", "match": "status-page" },
+    { "kind": "uncited", "match": "search-postmortem" }
+  ]
+}

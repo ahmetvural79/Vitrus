@@ -1,0 +1,7 @@
+{
+  "name": "Incident with no source plus a missing runbook (mixed)",
+  "expected_gaps": [
+    { "kind": "uncited", "match": "2026-05-30-checkout-errors" },
+    { "kind": "missing", "match": "checkout-recovery" }
+  ]
+}

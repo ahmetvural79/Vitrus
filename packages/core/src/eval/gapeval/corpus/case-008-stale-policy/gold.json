@@ -1,0 +1,6 @@
+{
+  "name": "Superseded data-retention policy",
+  "expected_gaps": [
+    { "kind": "stale", "match": "data-retention-2024" }
+  ]
+}

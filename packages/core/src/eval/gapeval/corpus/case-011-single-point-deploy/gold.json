@@ -1,0 +1,6 @@
+{
+  "name": "Deploy signing keys held by one engineer",
+  "expected_gaps": [
+    { "kind": "single_point", "match": "production-deploy" }
+  ]
+}

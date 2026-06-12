@@ -1,0 +1,6 @@
+{
+  "name": "Superseded database version decision",
+  "expected_gaps": [
+    { "kind": "stale", "match": "0008-postgres-13" }
+  ]
+}

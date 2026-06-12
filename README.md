@@ -225,6 +225,29 @@ assets/     logo + icon
 This repo is the **open core**: everything above is MIT and self-hostable end-to-end, with no feature
 flags and no fake "community edition". Gap analysis is never gated.
 
+## Benchmarks
+
+Gap detection has no public benchmark — so we built **Gap-Eval** (open corpus + harness, in this
+repo) and publish the numbers with their methodology:
+
+```bash
+vitrus bench gapeval --determinism    # or: bun run gapeval
+```
+
+| metric | v0 result |
+|---|---|
+| Recall / precision (overall, 18 gold-labeled cases, 5 gap kinds) | 100% / 100% |
+| False positives on clean brains (negative control) | 0 |
+| Determinism (same brain → byte-identical gaps, twice) | PASS |
+
+Honest framing: v0 is a **controlled synthetic corpus** (hand-authored brains with known gaps that
+exercise the engine's real mechanisms — dangling wikilinks, `contradicts`/`supersedes` edges,
+provenance-less events). It proves the detector does exactly what it documents, deterministically,
+with zero fabricated gaps; it does not claim real-world generalization. The corpus lives at
+[`packages/core/src/eval/gapeval/corpus`](packages/core/src/eval/gapeval/corpus) — adding a harder
+case is a one-directory PR. Retrieval benchmarks (LongMemEval/LoCoMo format, BYO dataset) run via
+`bun run bench`.
+
 ## Vitrus Cloud
 
 There is also a hosted version at **[app.vitrus.dev](https://app.vitrus.dev)** — the same MIT engine

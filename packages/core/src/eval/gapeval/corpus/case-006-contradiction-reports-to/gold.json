@@ -1,0 +1,6 @@
+{
+  "name": "Org chart and payroll disagree about a manager",
+  "expected_gaps": [
+    { "kind": "contradiction", "match": "leo" }
+  ]
+}

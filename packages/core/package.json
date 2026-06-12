@@ -34,6 +34,7 @@
     "demo": "bun run demo/e2e.ts",
     "eval": "bun run src/eval/run.ts",
     "bench": "bun run src/eval/bench/run.ts",
+    "gapeval": "bun run src/eval/gapeval/run.ts",
     "leak-test": "bun run src/security/run-leak-test.ts",
     "cross-leak-test": "bun run src/security/run-cross-tenant-test.ts",
     "test": "node --test --import tsx \"test/**/*.test.ts\"",

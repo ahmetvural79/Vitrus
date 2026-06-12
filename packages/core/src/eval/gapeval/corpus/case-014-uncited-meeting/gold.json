@@ -1,0 +1,6 @@
+{
+  "name": "Meeting notes typed from memory with no source",
+  "expected_gaps": [
+    { "kind": "uncited", "match": "capacity-planning" }
+  ]
+}
