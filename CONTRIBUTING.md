@@ -1,7 +1,7 @@
 # Contributing to Vitrus
 
 Thanks for your interest! Vitrus is **open core**: the engine + gap analysis + MCP + CLI
-(`@vitrus/core`, `@vitrus/mcp`) are MIT and fully featured. The hosted cloud (managed
+(`@vitrus/core`, `@vitrus/mcp`) are Apache-2.0 licensed and fully featured. The hosted cloud (managed
 connectors, dashboard, team/ACL, audit) is a separate commercial product.
 
 ## Dev setup
@@ -35,4 +35,4 @@ bun run leak-test   # unauthorized access = 0 (ACL fail-closed)
 Keep changes surgical and matched to the surrounding style. New capability goes through the
 `BrainEngine` contract first. Add tests; keep all four gates green.
 
-By contributing you agree your contributions are licensed under the MIT License.
+By contributing you agree your contributions are licensed under the Apache License 2.0.

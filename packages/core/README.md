@@ -8,7 +8,7 @@
 Search hands you raw pages. Vitrus hands you **the answer + its sources + what it doesn't know** —
 all in **portable Markdown files you own**.
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-6366F1.svg)](./LICENSE)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache--2.0-6366F1.svg)](./LICENSE)
 [![tests](https://img.shields.io/badge/tests-202%20·%204%20gates-22c55e.svg)](#testing--gates)
 [![MCP](https://img.shields.io/badge/MCP-stdio%20%2B%20HTTP-A855F7.svg)](#agent-native-mcp)
 [![runtime](https://img.shields.io/badge/runtime-Bun-black.svg)](https://bun.sh)
@@ -141,14 +141,14 @@ bun run leak-test      # unauthorized access = 0 (ACL fail-closed)
 
 **Capability is free; scale + trust are paid.**
 
-- **`@vitrus/core` + `@vitrus/mcp` → MIT.** Full engine, gap analysis, MCP, CLI, connectors, self-host. Real and unrestricted — no fake "community edition."
+- **`@vitrus/core` + `@vitrus/mcp` → Apache-2.0.** Full engine, gap analysis, MCP, CLI, connectors, self-host. Real and unrestricted — no fake "community edition."
 - **Cloud (managed connectors, dashboard, team/ACL, audit) → commercial.** The *same engine*, deployed multi-tenant.
 
 **Gap analysis is never gated.** Money comes from hosting, managed connectors, teams and compliance — never from holding your data hostage.
 
 ## License
 
-`@vitrus/core` and `@vitrus/mcp` are **MIT** (see [LICENSE](./LICENSE)). The cloud apps are commercial.
+`@vitrus/core` and `@vitrus/mcp` are **Apache-2.0** (see [LICENSE](./LICENSE)). The cloud apps are commercial.
 
 <div align="center">
 

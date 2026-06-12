@@ -7,7 +7,7 @@
 Search hands you raw pages. Vitrus hands you **the answer + its sources + what it doesn't know** —
 all in **portable Markdown files you own**.
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-6366F1.svg)](./LICENSE)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache--2.0-6366F1.svg)](./LICENSE)
 [![tests](https://img.shields.io/badge/tests-200%2B%20·%204%20gates-22c55e.svg)](#testing--gates)
 [![MCP](https://img.shields.io/badge/MCP-stdio%20%2B%20HTTP-A855F7.svg)](#agents-mcp)
 [![runtime](https://img.shields.io/badge/runtime-Bun-black.svg)](https://bun.sh)
@@ -102,7 +102,7 @@ Markdown is canonical — anything that becomes Markdown becomes knowledge:
 vitrus import ./brain          # a folder of .md files (+ optional .edges.json sidecars)
 ```
 
-The connector framework is in the core (MIT): one interface (`fetch()` → records with **content +
+The connector framework is in the core (Apache-2.0): one interface (`fetch()` → records with **content +
 ACL**), idempotent ingest, incremental prune, and **permission capture on every sync** — remove
 someone from a channel and their access is revoked on the next sync, automatically.
 
@@ -211,18 +211,18 @@ bun run leak-test      # unauthorized access = 0 (ACL fail-closed)
 
 ```
 packages/
-  core/     @vitrus/core — engine, hybrid search, gap analysis, CLI, connectors (MIT)
+  core/     @vitrus/core — engine, hybrid search, gap analysis, CLI, connectors (Apache-2.0)
     src/        the engine and CLI source (Bun runs TS directly, no build)
     brain/      a sample brain you can `vitrus import`
     migrations/ schema + row-level security
     test/       the test + eval + leak-test suites
-  mcp/      @vitrus/mcp — the Model Context Protocol server (MIT)
+  mcp/      @vitrus/mcp — the Model Context Protocol server (Apache-2.0)
 docs/       the guides linked above
 examples/   runnable recipes
 assets/     logo + icon
 ```
 
-This repo is the **open core**: everything above is MIT and self-hostable end-to-end, with no feature
+This repo is the **open core**: everything above is Apache-2.0 licensed and self-hostable end-to-end, with no feature
 flags and no fake "community edition". Gap analysis is never gated.
 
 ## Benchmarks
@@ -250,7 +250,7 @@ case is a one-directory PR. Retrieval benchmarks (LongMemEval/LoCoMo format, BYO
 
 ## Vitrus Cloud
 
-There is also a hosted version at **[app.vitrus.dev](https://app.vitrus.dev)** — the same MIT engine
+There is also a hosted version at **[app.vitrus.dev](https://app.vitrus.dev)** — the same Apache-2.0 engine
 in this repo, deployed multi-tenant, for teams that don't want to run their own. What it adds is
 operations, not capability:
 
@@ -292,7 +292,7 @@ anything that didn't take 60 seconds.
 
 ## License + credit
 
-`@vitrus/core` and `@vitrus/mcp` are **MIT** (see [LICENSE](./LICENSE)). The cloud apps (dashboard,
+`@vitrus/core` and `@vitrus/mcp` are **Apache-2.0** (see [LICENSE](./LICENSE)). The cloud apps (dashboard,
 multi-tenant API) live in a separate non-public repo.
 
 Vitrus draws on ideas explored by [GBrain](https://github.com/garrytan/gbrain) — Markdown-canonical

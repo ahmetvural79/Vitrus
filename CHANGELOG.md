@@ -5,6 +5,12 @@ All notable changes to `@vitrus/core` and `@vitrus/mcp`. Format loosely follows
 
 ## [Unreleased]
 
+### Changed (license)
+- **Relicensed from MIT to Apache License 2.0** (`@vitrus/core` + `@vitrus/mcp`). Same freedoms
+  (use, modify, sell, self-host — unrestricted), plus an explicit patent grant and patent-retaliation
+  protection for users. Added a `NOTICE` file per Apache convention. The hosted cloud apps remain
+  commercially licensed and were never part of this repo.
+
 ### Added
 - **Gap-Eval v0 benchmark** — `vitrus bench gapeval` (also `bun run gapeval`): an open, gold-labeled
   corpus (18 cases, all 5 gap kinds + clean negative controls) with per-kind precision/recall/F1,

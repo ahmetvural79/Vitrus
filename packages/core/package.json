@@ -1,9 +1,9 @@
 {
   "name": "@vitrus/core",
   "version": "0.3.0",
-  "description": "Vitrus core — your glass-box company brain. Open-core (MIT): hybrid search + gap analysis + self-linking graph + MCP + SKILL.md. Source-of-truth markdown, ownable, agent-native.",
+  "description": "Vitrus core — your glass-box company brain. Open-core (Apache-2.0): hybrid search + gap analysis + self-linking graph + MCP + SKILL.md. Source-of-truth markdown, ownable, agent-native.",
   "type": "module",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "bin": {
     "vitrus": "src/cli/index.ts",
     "vitrus-mcp": "src/mcp/index.ts"

@@ -16,4 +16,4 @@ claude mcp add vitrus -- bunx @vitrus/mcp
 Veri dizini `VITRUS_DATA` (varsayılan `./.vitrus`); önce `vitrus import <dir>`. Embedder/synthesizer/
 reranker ve backend (PGLite/Postgres) sağlayıcıları ortam değişkenlerinden seçilir — bkz. `@vitrus/core`.
 
-MIT. Açık çekirdeğin parçası.
+Apache-2.0. Açık çekirdeğin parçası.
