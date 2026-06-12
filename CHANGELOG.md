@@ -14,6 +14,10 @@ All notable changes to `@vitrus/core` and `@vitrus/mcp`. Format loosely follows
 - **README restructured** — community-first narrative (install paths, query modes, capabilities,
   troubleshooting), a factual *Vitrus Cloud* section describing the hosted dashboard/connectors/MCP
   endpoint, and a credit note to GBrain. Pricing/comparison marketing removed from the repo.
+- **Vitrus Cloud section updated** — live connector sync expanded to Jira, Confluence, GitLab,
+  Discord and an MCP bridge (any MCP server as a source); per-org MCP endpoint setup now documents
+  OpenClaw and Hermes alongside Claude Code/Codex/Cursor; Cloud Free plan is 1 brain · 1 seat ·
+  2 connectors · 5k nodes.
 
 ## [0.3.0] — 2026-06
 

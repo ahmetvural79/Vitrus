@@ -60,7 +60,7 @@ bunx @vitrus/core init --pglite     # creates ./.vitrus
 vitrus import ./brain               # ingest markdown (embeds + self-linking graph)
 vitrus think "how was the outage resolved"
 
-# 2) Wire it into Claude Code / Cursor as MCP — two commands
+# 2) Wire it into Claude Code / Cursor / OpenClaw / Hermes as MCP — two commands
 git clone https://github.com/ahmetvural79/Vitrus && cd Vitrus/packages/core && bun install && bun link
 claude mcp add vitrus -- bunx @vitrus/mcp
 
@@ -233,15 +233,21 @@ operations, not capability:
 
 - **Web dashboard** — Ask, **Gap Explorer**, knowledge **Graph**, **Entities**, **Verify**, and
   trace-to-source on every answer.
-- **Managed connectors** — a gallery of 13 sources (Slack, GitHub, Notion, Linear, Google Drive,
-  WhatsApp webhook, …) with stored credentials, scheduled sync and per-sync permission capture.
-- **A per-org MCP endpoint** — `https://api.vitrus.dev/t/<org>/mcp` with bearer auth, so Claude
-  Code/Cursor/your agents read the same brain your team does:
+- **Managed connectors** — a gallery of 13 sources with stored credentials, scheduled sync and
+  per-sync permission capture. Live sync: Slack, GitHub, Notion, Linear, Google Drive, **Jira,
+  Confluence, GitLab, Discord**, and an **MCP bridge** (any MCP server's resources become a source);
+  plus real-time WhatsApp webhook ingest and staged Email/Calendar imports.
+- **A per-org MCP endpoint** — `https://api.vitrus.dev/t/<org>/mcp` with bearer auth, so your agents
+  read the same brain your team does. Claude Code, Codex, Cursor, **OpenClaw**, **Hermes** — any MCP
+  client over Streamable HTTP (copy-paste setup per agent on the dashboard's *Agent access* page):
 
   ```bash
   claude mcp add --transport http vitrus \
     https://api.vitrus.dev/t/<org>/mcp \
     --header "Authorization: Bearer <token>"
+
+  openclaw mcp add vitrus --url https://api.vitrus.dev/t/<org>/mcp \
+    --transport streamable-http --header "Authorization: Bearer <token>"
   ```
 
 - **Team & ACL management** — roles (admin/member/viewer), seat-based membership, and an audit log of
@@ -249,9 +255,10 @@ operations, not capability:
 - **Account & support** — self-serve workspace administration and a built-in support desk (available
   on every account, including free ones).
 
-Signing up is free and gives you account + support access; the dashboard's brain surfaces run on paid
-seats. Either way there is no lock-in by design: your knowledge stays portable Markdown, and leaving
-the cloud means `vitrus import` on your own machine.
+Signing up is free — the Free plan includes the full dashboard with 1 brain · 1 seat · 2 connectors ·
+5k nodes; Pro ($25/seat/mo or $249/seat/yr) adds seats and scale. Either way there is no lock-in by
+design: your knowledge stays portable Markdown, and leaving the cloud means `vitrus import` on your
+own machine.
 
 ## Contributing
 
