@@ -117,6 +117,9 @@ a PR fuses into a single graph node.
 - **Gap analysis** — five deterministic kinds: *missing* (referenced but undocumented), *contradiction*
   (conflicting edges), *stale* (superseded), *single-point* (bus-factor risk), *uncited* (event with no
   source). Derived from graph structure and explicit text signals only.
+- **Proactive attention** — `vitrus watch` makes gap analysis *temporal*: *stale knowledge*, *unresolved
+  incidents* and *aging gaps* surfaced **without being asked**. Deterministic, no LLM; schedule it (with
+  nightly `vitrus dream` consolidation) for a standing radar over your memory.
 - **Self-linking graph** — `[[type::slug]]` typed edges, extracted without an LLM; bi-temporal
   (valid-time + record-time), so "what did we believe then" is answerable.
 - **Hybrid retrieval** — vector + BM25 + entity match, RRF-fused; optional reranker.
