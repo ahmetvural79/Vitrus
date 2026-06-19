@@ -3,7 +3,7 @@
 // Vitrus CLI. Faz 0 hedefi: init / import / sync / search / think çalışsın.
 // `sync` depo → sidecar (kaynak-üstü graf) yazar; motor retrieval'ı sonraki tasklar.
 
-import { writeFileSync, mkdirSync, readFileSync } from "node:fs";
+import { writeFileSync, mkdirSync, readFileSync, existsSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { PgliteEngine } from "../core/pglite-engine.js";
@@ -22,6 +22,7 @@ import { optimizeSkill, renderOptimize } from "../skill/skill-optimize.js";
 import { ingest } from "../connectors/ingest.js";
 import { SlackConnector } from "../connectors/slack.js";
 import { GitHubConnector } from "../connectors/github.js";
+import type { SyncPayload } from "../connectors/sync.js";
 import { DocsConnector } from "../connectors/docs.js";
 import { SessionConnector } from "../connectors/sessions.js";
 import { EmailConnector } from "../connectors/email.js";
@@ -29,6 +30,7 @@ import { CalendarConnector } from "../connectors/calendar.js";
 import { ChangeQueue, parseWebhook } from "../connectors/webhook.js";
 import { resolveConfig, renderConfig } from "../core/config.js";
 import { buildDashboard, renderDashboardHtml } from "../api/dashboard.js";
+import { hooksFor, type AgentKind } from "./hooks.js";
 import { normalizeEnv } from "../core/env.js";
 
 // Eski GLASSBOX_*/LUCIDEX_* env adlarını da kabul et (marka geçişi geriye-uyumu).
@@ -83,6 +85,14 @@ async function main() {
   if (asIdx >= 0 && rest[asIdx + 1]) {
     asUser = rest[asIdx + 1];
     rest.splice(asIdx, 2);
+  }
+
+  // --asof <ISO>: bi-temporal zaman-yolculuğu — grafı o tarihteki haliyle göster.
+  let asofArg: string | null = null;
+  const asofIdx = rest.indexOf("--asof");
+  if (asofIdx >= 0 && rest[asofIdx + 1]) {
+    asofArg = rest[asofIdx + 1];
+    rest.splice(asofIdx, 2);
   }
 
   // --scope <x>: B2 — retrieval'ı bu kapsama daralt / ingest'i bu kapsamla etiketle.
@@ -188,6 +198,50 @@ async function main() {
       }
       console.log(`⚠ Corpus gaps (${gaps.length}):`);
       for (const g of gaps) console.log(`  [${g.kind}] ${g.message}`);
+      break;
+    }
+
+    case "ops": {
+      // Operasyonel verimsizlik haritası (deterministik): unowned/bus_factor/bottleneck/broken_handoff.
+      const findings = await engine.findOps();
+      if (findings.length === 0) {
+        console.log("✓ no operational inefficiencies detected.");
+        break;
+      }
+      console.log(`⚠ Operational findings (${findings.length}, severity-ranked):`);
+      for (const f of findings) console.log(`  [${f.severity}] ${f.kind}: ${f.message}`);
+      break;
+    }
+
+    case "conflicts": {
+      // "Kaynaklar çeliştiğinde Vitrus söyler" — çelişkiler çift-taraflı + çözüm durumuyla.
+      const conflicts = await engine.findConflicts();
+      if (conflicts.length === 0) {
+        console.log("✓ no conflicts — your sources agree.");
+        break;
+      }
+      const open = conflicts.filter((c) => !c.resolved).length;
+      console.log(`⚠ Conflicts (${conflicts.length}; ${open} open):`);
+      for (const c of conflicts) console.log(`  ${c.resolved ? "✓ resolved" : "⚠ OPEN    "} "${c.a.slug}" ⇄ "${c.b.slug}" (${c.kind})`);
+      if (open) console.log(`\nResolve: vitrus resolve <keep-slug> <supersede-slug>`);
+      break;
+    }
+
+    case "resolve": {
+      // Çelişkiyi çöz: kazananı tut, kaybedeni supersede et (resolve_conflict aracıyla aynı motor).
+      const [keep, supersede] = rest;
+      if (!keep || !supersede) {
+        console.log("usage: vitrus resolve <keep-slug> <supersede-slug> [--as <user>]");
+        break;
+      }
+      await engine.init();
+      const brainDir = ENV.VITRUS_BRAIN;
+      const store = brainDir ? new MarkdownStore(brainDir) : undefined;
+      const principals = asUser ? await engine.expandPrincipals(asUser) : undefined;
+      const { callTool } = await import("../mcp/tools.js");
+      const r = await callTool(engine, "resolve_conflict", { keep, supersede }, { store, principals });
+      const out = r.structuredContent as { resolved: boolean; keep?: string; superseded?: string };
+      console.log(out.resolved ? `✓ resolved: "${out.keep}" supersedes "${out.superseded}" (now stale)` : `could not resolve: "${keep}" not accessible or not found`);
       break;
     }
 
@@ -318,9 +372,83 @@ async function main() {
     }
 
     case "ingest": {
-      // vitrus ingest <slack|github> <fixture.json>
-      const [kind, fixture] = rest;
+      // vitrus ingest <slack|github|...> <fixture.json>
+      //   CANLI: vitrus ingest github --live --repo owner/name [--token <t>|env GITHUB_TOKEN] [--since <iso>] [--max-pages N]
       await engine.init();
+      const [kind, fixture] = rest;
+
+      if (rest.includes("--live")) {
+        const takeOne = (flag: string): string | undefined => {
+          const i = rest.indexOf(flag);
+          return i >= 0 && rest[i + 1] ? rest[i + 1] : undefined;
+        };
+        const since = takeOne("--since");
+        const maxPagesArg = takeOne("--max-pages");
+        const maxPages = maxPagesArg ? Number(maxPagesArg) : undefined;
+        const queueMode = rest.includes("--queue"); // inline yerine dayanıklı sync işi kuyruğa al
+        const tokenArg = takeOne("--token");
+
+        const LIVE_SOURCES = new Set(["github", "slack", "notion", "linear", "jira", "drive", "gmail"]);
+        if (!LIVE_SOURCES.has(kind)) {
+          console.log("live ingest supports: github | slack | notion | linear | jira | drive | gmail");
+          break;
+        }
+
+        // payload (kaynak-spesifik) — queue ve inline aynı payload'ı kullanır.
+        let payload: SyncPayload;
+        if (kind === "github") {
+          const repo = takeOne("--repo");
+          if (!repo) {
+            console.log("usage: vitrus ingest github --live --repo owner/name [--token <t>|env GITHUB_TOKEN] [--since <iso>] [--queue]");
+            break;
+          }
+          payload = { source: "github", repo, since, maxPages };
+        } else if (kind === "slack") {
+          const channel = takeOne("--channel");
+          if (!channel) {
+            console.log("usage: vitrus ingest slack --live --channel <Cxxxx> [--name <ch>] [--token <t>|env SLACK_TOKEN] [--since <iso>] [--queue]");
+            break;
+          }
+          payload = { source: "slack", channel, channelName: takeOne("--name"), since, maxPages };
+        } else if (kind === "jira") {
+          const site = takeOne("--site");
+          const email = takeOne("--email");
+          if (!site || !email) {
+            console.log("usage: vitrus ingest jira --live --site <co|url> --email <e> [--token <t>|env JIRA_API_TOKEN] [--since <iso>] [--queue]");
+            break;
+          }
+          payload = { source: "jira", site, email, since, maxPages };
+        } else {
+          // notion | linear | drive | gmail — workspace geneli (ek konum argümanı yok).
+          payload = { source: kind as "notion" | "linear" | "drive" | "gmail", since, maxPages };
+        }
+
+        if (queueMode) {
+          // Dayanıklı sync işi (token taşımaz; worker env'den okur). Aynı kaynak → tek aktif iş.
+          const { syncDedupKey } = await import("../connectors/sync.js");
+          const { id, deduped } = await engine.getQueue().enqueue("sync", payload as unknown as Record<string, unknown>, { dedupKey: syncDedupKey(payload) });
+          console.log(deduped ? `sync already queued (#${id})` : `enqueued sync job #${id} (${kind}) · run worker: vitrus agent work`);
+          break;
+        }
+
+        // inline: buildConnector (queue ile AYNI kurulum) — token env'den veya --token.
+        const { buildConnector } = await import("../connectors/sync.js");
+        const TOKEN_ENV: Record<string, string> = { github: "GITHUB_TOKEN", slack: "SLACK_TOKEN", notion: "NOTION_TOKEN", linear: "LINEAR_API_KEY", jira: "JIRA_API_TOKEN", drive: "GOOGLE_TOKEN", gmail: "GOOGLE_TOKEN" };
+        const buildEnv = tokenArg ? { ...ENV, [TOKEN_ENV[kind]]: tokenArg } : ENV;
+        let conn;
+        try {
+          conn = buildConnector(payload, buildEnv);
+        } catch (e) {
+          console.log((e as Error).message);
+          break;
+        }
+        const r = await ingest(engine, conn, { prune: !since }); // delta (since) → prune kapalı
+        await engine.refreshEntities();
+        await engine.refreshSalience();
+        console.log(`${r.connector} (live${since ? `, since ${since}` : ""}): ${r.upserted} records imported, ${r.pruned} pruned.`);
+        break;
+      }
+
       const DOCS = new Set(["notion", "linear", "jira", "drive"]);
       const connector =
         kind === "slack" && fixture
@@ -348,16 +476,34 @@ async function main() {
     }
 
     case "webhook": {
-      // vitrus webhook <connector> <event.json> — canlı değişikliği uygula
+      // vitrus webhook <github|slack|connector> <event.json> — canlı değişikliği uygula
       const [conn, evPath] = rest;
       if (!conn || !evPath) {
-        console.log("usage: vitrus webhook <connector> <event.json>");
+        console.log("usage: vitrus webhook <github|slack|connector> <event.json>");
         break;
       }
       await engine.init();
       const payload = JSON.parse(readFileSync(evPath, "utf8"));
+
+      if (conn === "slack") {
+        // Slack: thread parçalanmasını önlemek için DOĞRUDAN delta değil, kanal SYNC'i tetikle.
+        const { slackWebhookChannel } = await import("../connectors/webhooks.js");
+        const { syncDedupKey } = await import("../connectors/sync.js");
+        const channel = slackWebhookChannel(payload);
+        if (!channel) { console.log("slack webhook: event.channel yok"); break; }
+        const p: SyncPayload = { source: "slack", channel };
+        const { id, deduped } = await engine.getQueue().enqueue("sync", p as unknown as Record<string, unknown>, { dedupKey: syncDedupKey(p) });
+        console.log(deduped ? `slack webhook: sync already queued (#${id})` : `slack webhook: enqueued sync #${id} (channel ${channel}) · run: vitrus agent work`);
+        break;
+      }
+
       const queue = new ChangeQueue();
-      queue.enqueue(parseWebhook(conn, `working/${conn}/`, payload));
+      if (conn === "github") {
+        const { parseGitHubWebhook } = await import("../connectors/webhooks.js");
+        for (const ev of parseGitHubWebhook(payload)) queue.enqueue(ev);
+      } else {
+        queue.enqueue(parseWebhook(conn, `working/${conn}/`, payload));
+      }
       const r = await queue.drain(engine);
       await engine.refreshEntities();
       await engine.refreshSalience();
@@ -371,13 +517,14 @@ async function main() {
       await engine.init();
       if (graphFlag) {
         const { renderGraphHtml } = await import("../api/graph.js");
-        const snap = await engine.graphSnapshot();
+        const snap = await engine.graphSnapshot(asofArg ? { asof: asofArg } : {});
+        const asofTag = asofArg ? ` (as of ${asofArg})` : "";
         if (htmlOut) {
           writeFileSync(htmlOut, renderGraphHtml(snap));
-          console.log(`graph written: ${htmlOut}`);
+          console.log(`graph written: ${htmlOut}${asofTag}`);
         } else {
           console.log(
-            `graph: ${snap.nodes.length} nodes · ${snap.edges.length} edges${snap.truncated ? ` (+${snap.truncated} not shown)` : ""}`
+            `graph${asofTag}: ${snap.nodes.length} nodes · ${snap.edges.length} edges${snap.truncated ? ` (+${snap.truncated} not shown)` : ""}`
           );
         }
         break;
@@ -476,18 +623,97 @@ async function main() {
       const { runStdio, runHttp } = await import("../mcp/server.js");
       const { verifierFromEnv } = await import("../mcp/auth.js");
       await engine.init();
+      // VITRUS_BRAIN → ajan-yazma (remember/record_decision) markdown KAYNAĞINA persist
+      // edilir (sahiplik invariantı; reindex'te kalır). Tanımsızsa index-only.
+      const brainDir = ENV.VITRUS_BRAIN;
+      const store = brainDir ? new MarkdownStore(brainDir) : undefined;
       if (httpPort !== null) {
         const resource = ENV.VITRUS_RESOURCE ?? `http://localhost:${httpPort}/mcp`;
         const verifier = verifierFromEnv(resource, ENV.VITRUS_AUTH_TOKENS) ?? undefined;
-        await runHttp(engine, httpPort, { verifier, resource });
+        await runHttp(engine, httpPort, { verifier, resource, store });
         console.error(
-          `Vitrus MCP (Streamable HTTP) → http://localhost:${httpPort}/mcp · ${verifier ? "OAuth-protected" : "open (dev)"}`
+          `Vitrus MCP (Streamable HTTP) → http://localhost:${httpPort}/mcp · ${verifier ? "OAuth-protected" : "open (dev)"}` +
+            (store ? ` · writes → ${brainDir}` : " · writes index-only (set VITRUS_BRAIN)")
         );
       } else {
-        console.error("Vitrus MCP (stdio) ready.");
-        await runStdio(engine);
+        console.error("Vitrus MCP (stdio) ready." + (store ? ` writes → ${brainDir}` : " writes index-only (set VITRUS_BRAIN)"));
+        await runStdio(engine, store);
       }
       return;
+    }
+
+    case "decide": {
+      // Karardan-sonra-yaz döngüsünün terminal/CI yüzeyi (record_decision MCP aracıyla aynı motor).
+      // usage: vitrus decide "<decision>" [--why <rationale>] [--supersedes <slug>] [--contradicts <slug>] [--source <slug|url>]... [--title <t>] [--as <user>]
+      await engine.init();
+      const raw = process.argv.slice(2); // ["decide", ...]
+      const takeOne = (flag: string): string | undefined => {
+        const i = raw.indexOf(flag);
+        if (i >= 0 && raw[i + 1]) { const v = raw[i + 1]; raw.splice(i, 2); return v; }
+        return undefined;
+      };
+      const takeMany = (flag: string): string[] => {
+        const out: string[] = [];
+        let i: number;
+        while ((i = raw.indexOf(flag)) >= 0 && raw[i + 1]) { out.push(raw[i + 1]); raw.splice(i, 2); }
+        return out;
+      };
+      const rationale = takeOne("--why");
+      const supersedes = takeOne("--supersedes");
+      const contradicts = takeOne("--contradicts");
+      const title = takeOne("--title");
+      const sources = takeMany("--source");
+      const asFlag = takeOne("--as");
+      const decision = raw.slice(1).filter((a) => !a.startsWith("--")).join(" ");
+      if (!decision) { console.log('usage: vitrus decide "<decision>" [--why <rationale>] [--supersedes <slug>] [--contradicts <slug>] [--source <slug|url>]... [--title <t>] [--as <user>]'); break; }
+      const { callTool } = await import("../mcp/tools.js");
+      const brainDir = ENV.VITRUS_BRAIN;
+      const store = brainDir ? new MarkdownStore(brainDir) : undefined;
+      const principals = (asFlag ?? asUser) ? await engine.expandPrincipals((asFlag ?? asUser)!) : undefined;
+      const r = await callTool(
+        engine,
+        "record_decision",
+        { decision, rationale, supersedes, contradicts, title, sources },
+        { store, principals }
+      );
+      const out = r.structuredContent as { slug: string; persisted: string; conflicts: { message: string }[]; superseded: string[] };
+      console.log(`✓ decision recorded: ${out.slug} (${out.persisted})`);
+      if (out.superseded.length) console.log(`  supersedes (now stale): ${out.superseded.join(", ")}`);
+      if (out.conflicts.length) console.log(`  ⚠ ${out.conflicts.length} contradiction(s):\n    - ${out.conflicts.map((c) => c.message).join("\n    - ")}`);
+      break;
+    }
+
+    case "hooks": {
+      // Ajan entegrasyonu kur: MCP bağlantısı + read-before/write-after disiplini + hook'lar.
+      // Mevcut dosyaların ÜZERİNE YAZMAZ → <path>.vitrus-suggested yazıp elle birleştirmeyi söyler.
+      const sub = rest[0];
+      if (sub && sub !== "install") {
+        console.log("usage: vitrus hooks install [--agent claude|cursor|codex] [--dir <path>]");
+        break;
+      }
+      const agentIdx = rest.indexOf("--agent");
+      const agent = (agentIdx >= 0 && rest[agentIdx + 1] ? rest[agentIdx + 1] : "claude") as AgentKind;
+      if (!["claude", "cursor", "codex"].includes(agent)) {
+        console.log(`unknown agent: ${agent} (use: claude | cursor | codex)`);
+        break;
+      }
+      const dirIdx = rest.indexOf("--dir");
+      const targetDir = dirIdx >= 0 && rest[dirIdx + 1] ? rest[dirIdx + 1] : ".";
+      const files = hooksFor(agent, { brainDir: ENV.VITRUS_BRAIN ?? "./brain", dataDir: DATA_DIR });
+      console.log(`Vitrus hooks · agent=${agent} · dir=${targetDir}`);
+      for (const f of files) {
+        const dest = join(targetDir, f.path);
+        const finalDest = existsSync(dest) ? dest + ".vitrus-suggested" : dest;
+        mkdirSync(dirname(finalDest), { recursive: true });
+        writeFileSync(finalDest, f.content, "utf8");
+        console.log(
+          finalDest === dest
+            ? `  + ${f.path}`
+            : `  ~ ${f.path} exists → wrote ${f.path}.vitrus-suggested (merge manually)`
+        );
+      }
+      console.log("\nNext: ensure `vitrus` is on PATH (bun link), then start your agent — it connects to the 'vitrus' MCP server.");
+      break;
     }
 
     case "agent": {
@@ -570,7 +796,7 @@ async function main() {
 
     default:
       console.log(
-        "usage: vitrus <init | import <dir> | ingest <slack|github|sessions|email|calendar|notion|linear|jira|drive> <fixture> | webhook <connector> <event> | sync <dir> | search <q> [--as <user>] [--scope <x>] [--postgres <url>] | think <q> [--html f|--json] [--scope <x>] | verify <claim> [--as <user>] | gaps | entities | dedup | dream | purge [days] | audit [<slug>] | dashboard [--html f] [--graph] | chunks <slug> [q] | agent run <q> | agent work [--max N] | jobs | bench gapeval [--out <f> --negative-control --determinism] | doctor | config | version | skill <topic> [--publish --out <dir> | --eval] | skill-eval <name> [--out <dir>] | skill-curate [--out <dir>] | skill-optimize <name> [--apply --out <dir>] | mcp [--http <port>]>"
+        "usage: vitrus <init | import <dir> | ingest <slack|github|sessions|email|calendar|notion|linear|jira|drive> <fixture> | ingest <github --live --repo <o/n> | slack --live --channel <Cxxxx> | notion|linear|drive|gmail --live | jira --live --site <co> --email <e>> [--token <t>] [--since <iso>] [--queue] | webhook <github|slack|connector> <event> | sync <dir> | search <q> [--as <user>] [--scope <x>] [--postgres <url>] | think <q> [--html f|--json] [--scope <x>] | verify <claim> [--as <user>] | decide \"<decision>\" [--why <r>] [--supersedes <slug>] [--contradicts <slug>] [--source <s>]... [--as <user>] | gaps | ops | conflicts | resolve <keep> <supersede> | entities | dedup | dream | purge [days] | audit [<slug>] | dashboard [--html f] [--graph [--asof <ISO>]] | chunks <slug> [q] | agent run <q> | agent work [--max N] | jobs | bench gapeval [--out <f> --negative-control --determinism] | doctor | config | version | skill <topic> [--publish --out <dir> | --eval] | skill-eval <name> [--out <dir>] | skill-curate [--out <dir>] | skill-optimize <name> [--apply --out <dir>] | hooks install [--agent claude|cursor|codex] [--dir <path>] | mcp [--http <port>]>"
       );
   }
 
@@ -588,6 +814,12 @@ async function runJob(engine: PgliteEngine, job: Job): Promise<unknown> {
       await engine.refreshEntities();
       await engine.refreshSalience();
       return { ok: true };
+    case "sync": {
+      // Connector incremental senkronu (token env'den; payload'da sır taşınmaz).
+      const { runSyncJob } = await import("../connectors/sync.js");
+      const r = await runSyncJob(engine, job.payload as unknown as SyncPayload, { env: ENV });
+      return { connector: r.connector, upserted: r.upserted, pruned: r.pruned };
+    }
     default:
       throw new Error(`unknown job kind: ${job.kind}`);
   }

@@ -42,6 +42,33 @@ test("bi-temporal: değişen kenar geçersiz kılınır (silinmez) — şimdi=ye
   }
 });
 
+test("bi-temporal asof: zaman-yolculuğu — o tarihte canlı kenarlar (getConnections + graphSnapshot)", async () => {
+  const e = await eng();
+  try {
+    await e.putNode(node("working/test/p", "[[works_at::durable/companies/a]]"));
+    await new Promise((r) => setTimeout(r, 12));
+    const mid = new Date().toISOString();
+    await new Promise((r) => setTimeout(r, 12));
+    await e.putNode(node("working/test/p", "[[works_at::durable/companies/b]]")); // a expire, b create
+
+    // şimdi: yalnız b
+    assert.deepEqual((await e.getConnections("working/test/p")).map((x) => x.toId), ["durable/companies/b"]);
+    // as-of mid: a hâlâ canlı, b henüz oluşmamış → yalnız a
+    const atMid = await e.getConnections("working/test/p", 1, { asof: mid });
+    assert.deepEqual(atMid.map((x) => x.toId), ["durable/companies/a"], "as-of mid: yalnız a (b henüz yok)");
+    // çok geçmiş: hiçbir kenar henüz yoktu → boş
+    assert.equal((await e.getConnections("working/test/p", 1, { asof: "2000-01-01T00:00:00Z" })).length, 0);
+
+    // graphSnapshot as-of mid: a kenarı VAR, b kenarı YOK
+    const snap = await e.graphSnapshot({ asof: mid });
+    const pairs = snap.edges.map((x) => `${x.from}->${x.to}`);
+    assert.ok(pairs.some((p) => p.includes("durable/companies/a")), "snapshot as-of mid: a kenarı var");
+    assert.ok(!pairs.some((p) => p.includes("durable/companies/b")), "snapshot as-of mid: b kenarı YOK");
+  } finally {
+    await e.close();
+  }
+});
+
 test("bi-temporal: kaldırılan link expire; tekrar gelince revive", async () => {
   const e = await eng();
   try {

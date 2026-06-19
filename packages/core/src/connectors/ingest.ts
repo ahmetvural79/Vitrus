@@ -13,7 +13,20 @@ export interface IngestResult {
   pruned: number;
 }
 
-export async function ingest(engine: BrainEngine, connector: Connector): Promise<IngestResult> {
+export interface IngestOpts {
+  /**
+   * Bu fetch'te görülmeyen eski kayıtları soft-delete et. TAM senkronda true
+   * (varsayılan). DELTA/incremental fetch'te (ör. GitHub `since`) FALSE olmalı —
+   * yoksa yalnız delta döndüğünden eski kayıtların tümü yanlışlıkla silinir.
+   */
+  prune?: boolean;
+}
+
+export async function ingest(
+  engine: BrainEngine,
+  connector: Connector,
+  opts: IngestOpts = {}
+): Promise<IngestResult> {
   // Grup üyeliği hattı (doc-ACL'den ayrı, F13) — varsa önce senkronla.
   if (connector.groups) {
     for (const g of await connector.groups()) await engine.setGroupMembers(g.group, g.members);
@@ -24,9 +37,13 @@ export async function ingest(engine: BrainEngine, connector: Connector): Promise
   }
   // incremental_sync budaması: bu connector'ın namespace'inde, bu fetch'te
   // görülmeyen eski kayıtları soft-delete (connector alanına göre DEĞİL).
-  const pruned = await engine.pruneConnector(
-    connector.slugPrefix,
-    records.map((r) => r.sourceId)
-  );
+  // DELTA fetch'te atlanır (prune=false) — aksi halde eskiler yanlışlıkla silinir.
+  const prune = opts.prune ?? true;
+  const pruned = prune
+    ? await engine.pruneConnector(
+        connector.slugPrefix,
+        records.map((r) => r.sourceId)
+      )
+    : 0;
   return { connector: connector.name, upserted: records.length, pruned };
 }

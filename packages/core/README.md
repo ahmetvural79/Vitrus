@@ -27,6 +27,9 @@ bunx @vitrus/core init --pglite     # zero-setup local brain (./.vitrus)
 vitrus import ./brain               # ingest markdown (embeds + a self-linking graph)
 vitrus think "how was the outage resolved"   # answer + [n] sources + GAP BOX + confidence
 vitrus watch                        # proactive: what needs your attention (stale, unresolved, aging gaps)
+vitrus ops                          # operational inefficiencies (unowned · bottleneck · bus-factor · redundant)
+vitrus conflicts                    # contradictions, both sides — resolve: vitrus resolve <keep> <drop>
+vitrus hooks install --agent claude # agents read before they act, write after they decide
 ```
 
 > Signature output: alongside the answer, a **"what your brain doesn't know"** (gap) box.
@@ -54,6 +57,27 @@ Mem0, Zep, Glean — they all answer; **none tell you what they don't know.** Th
 Five gap kinds: **missing** (referenced but undocumented) · **contradiction** (conflicting edges) · **stale** (superseded) · **single-point** (bus-factor risk) · **uncited** (an event with no source).
 
 And the newest surface — **proactive, not reactive**: `vitrus watch` turns gap analysis temporal (stale knowledge, unresolved incidents, aging gaps) and tells you *what needs attention* without being asked.
+
+## Beyond gaps — the systems map, conflicts & the write-back loop
+
+Same deterministic, no-LLM engine, three more surfaces (each with a CLI command **and** an MCP tool):
+
+- **🗺️ Ops-map** — `vitrus ops` · MCP `ops_report`. Reads the company as a graph and flags operational inefficiencies: **unowned** services, **bus-factor** (single-person) risk, **bottlenecks** (overloaded hubs), **broken handoffs** (depending on superseded ground), and **redundant tools** (embedding-similar services). Severity-ranked; every finding cites the real nodes — evidence, not a consultant's guess.
+- **⚖️ Conflict resolution** — `vitrus conflicts` / `vitrus resolve` · MCP `resolve_conflict`. Detects contradictions and shows **both sides**; resolve by choosing the winner — the loser is superseded (marked stale) and the conflict closes. Nothing overwritten in silence. *(Glen admits it doesn't resolve conflicting observations; Vitrus does.)*
+- **✍️ Write-back loop** — `record_decision`, `capture_session` · `vitrus hooks install`. Agents **read before they act and write after they decide** — decisions persist with their sources, so the brain stays live without anyone writing docs. A new decision that contradicts an existing one is flagged back to the agent (never a silent overwrite).
+
+## Live connectors
+
+Seven first-class live connectors over one injectable, mock-testable HTTP layer (**5 pagination styles**: REST-Link, GET-cursor, POST-cursor, GraphQL, offset, pageToken):
+
+**GitHub · Slack · Notion · Linear · Jira · Drive · Gmail**
+
+Incremental sync (`--since`, prune-safe), **webhook → live delta** (GitHub direct; Slack triggers a re-sync), and a **durable, crash-recovery sync queue** with idempotent jobs + a cron scheduler. Tokens live in an **AES-256-GCM vault** (cloud), per-tenant isolated.
+
+```bash
+GITHUB_TOKEN=… vitrus ingest github --live --repo owner/name      # pull (incremental with --since)
+vitrus ingest slack --live --channel C0… --queue                  # enqueue a durable sync job
+```
 
 ---
 
