@@ -827,6 +827,8 @@ export class PgliteEngine implements BrainEngine {
       validFrom: e.valid_from ? toISO(e.valid_from) : null,
       validTo: e.valid_to ? toISO(e.valid_to) : null,
     }));
+    // NOT: relatedNodeIds/message dahili qid (org~~slug) taşır — iç tüketiciler (think/graphSnapshot/
+    // findConflicts) buna güvenir. Görüntü için temizleme PRESENTATION katmanında (cloud-api/MCP) yapılır.
     return structuralGaps(views, edges);
   }
 
@@ -849,6 +851,7 @@ export class PgliteEngine implements BrainEngine {
     } catch {
       similarPairs = [];
     }
+    // Görüntü temizleme (org~~ önekini soyma) PRESENTATION katmanında — bkz. findGaps notu.
     return operationalFindings(views, edges, { bottleneckThreshold: opts.bottleneckThreshold, similarPairs });
   }
 
@@ -866,6 +869,7 @@ export class PgliteEngine implements BrainEngine {
       [this.org ?? null]
     );
     const sup: TypedEdge[] = edgeRows.map((e) => ({ fromId: e.from_node, toId: e.to_node, type: "supersedes" as const, confidence: 1 }));
+    // Görüntü temizleme (org~~ önekini soyma) PRESENTATION katmanında — bkz. findGaps notu.
     return buildConflicts(contradictions, sup, map);
   }
 

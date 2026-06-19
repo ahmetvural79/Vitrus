@@ -53,7 +53,8 @@ export class GeminiEmbedder implements Embedder {
       body: JSON.stringify({
         requests: texts.map((t) => ({
           model: modelPath,
-          content: { parts: [{ text: t }] },
+          // Boş/yalnız-boşluk içerik Gemini'de 400 verir → tek boşlukla ikame et (dirençli embed).
+          content: { parts: [{ text: t && t.trim() ? t : " " }] },
           outputDimensionality: this.dim,
         })),
       }),
