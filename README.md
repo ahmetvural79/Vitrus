@@ -106,11 +106,19 @@ The connector framework is in the core (Apache-2.0): one interface (`fetch()` �
 ACL**), idempotent ingest, incremental prune, and **permission capture on every sync** — remove
 someone from a channel and their access is revoked on the next sync, automatically.
 
-Included adapters: **Slack** (threads → nodes, @mentions auto-linked to people) · **GitHub**
-(issues/PRs) · **Email** (participants become the ACL) · **Calendar** · a generic **Docs** adapter
-(Notion, Linear, Jira, Drive… map to one shape) · an **MCP-source bridge** (any MCP server becomes a
-source). Everything funnels into **one brain**, so the same `alice` mentioned in Slack and authoring
-a PR fuses into a single graph node.
+**Seven first-class live connectors** over one injectable, mock-testable HTTP layer (5 pagination
+styles — REST-Link · GET-cursor · POST-cursor · GraphQL · offset · pageToken): **GitHub · Slack ·
+Notion · Linear · Jira · Drive · Gmail**. Incremental sync (`--since`, prune-safe), **webhook → live
+delta** (GitHub direct; Slack triggers a re-sync), and a **durable, crash-recovery sync queue** with a
+cron scheduler. Plus offline adapters: **Email** (participants become the ACL) · **Calendar** · a
+generic **Docs** adapter · an **MCP-source bridge** (any MCP server becomes a source). Everything
+funnels into **one brain**, so the same `alice` mentioned in Slack and authoring a PR fuses into a
+single graph node.
+
+```bash
+GITHUB_TOKEN=… vitrus ingest github --live --repo owner/name              # pull (incremental with --since)
+vitrus ingest slack --live --channel C0… --queue                          # enqueue a durable sync job
+```
 
 ## Capabilities
 
@@ -120,8 +128,20 @@ a PR fuses into a single graph node.
 - **Proactive attention** — `vitrus watch` makes gap analysis *temporal*: *stale knowledge*, *unresolved
   incidents* and *aging gaps* surfaced **without being asked**. Deterministic, no LLM; schedule it (with
   nightly `vitrus dream` consolidation) for a standing radar over your memory.
-- **Self-linking graph** — `[[type::slug]]` typed edges, extracted without an LLM; bi-temporal
-  (valid-time + record-time), so "what did we believe then" is answerable.
+- **Ops-map** — `vitrus ops` (MCP `ops_report`) reads the company as a system and flags operational
+  inefficiencies: *unowned* services, *bus-factor* (single-person) risk, *bottlenecks* (overloaded hubs),
+  *broken handoffs* (depending on superseded ground), and *redundant tools* (embedding-similar services).
+  Severity-ranked, each finding cites real nodes — evidence, not a consultant's guess.
+- **Conflict resolution** — `vitrus conflicts` / `vitrus resolve` (MCP `resolve_conflict`) detects
+  contradictions and shows **both sides**; resolve by choosing the winner — the loser is superseded
+  (marked stale) and the conflict closes. Nothing overwritten in silence.
+- **Write-back loop** — agents **read before they act and write after they decide**: MCP
+  `record_decision` / `capture_session` + `vitrus decide` + `vitrus hooks install` (Claude/Cursor/Codex).
+  Decisions persist with their sources, so the brain stays live; a decision that contradicts an existing
+  one is flagged back to the agent.
+- **Self-linking graph** — `[[type::slug]]` typed edges, extracted without an LLM; **bi-temporal** —
+  `vitrus dashboard --graph --asof <ISO>` (and `getConnections`/`graphSnapshot`) answer *"what did we
+  believe in March?"* (time-travel on the edge graph; correct from real `created_at`/`expired_at`).
 - **Hybrid retrieval** — vector + BM25 + entity match, RRF-fused; optional reranker.
 - **Provenance everywhere** — every claim traces to node → chunk → source URI.
 - **ACL, fail-closed** — enforced at the index layer; unauthorized content never appears in results.
@@ -152,10 +172,13 @@ claude mcp add vitrus -- bunx @vitrus/mcp     # stdio, one line
 vitrus-mcp --http 3000                        # or Streamable HTTP on :3000/mcp
 ```
 
-Tools: `search` · `think` · `gap_report` · `provenance` · `get_node` · `verify`. Markdown sources are
-exposed as `vitrus://node/<slug>` resources. Agents see **only what the token's user is allowed to
-see** — ACL is enforced at the index layer, fail-closed. The output of an import can also be an
-executable **Agent Skill (SKILL.md)** wired live to MCP.
+Agents **read before they act and write after they decide.** Read tools: `search` · `think` ·
+`gap_report` · `ops_report` · `provenance` · `verify`. Write tools: `record_decision` ·
+`capture_session` · `resolve_conflict` (`remember` / `forget` / `improve` too). One command wires the
+loop into Claude Code / Cursor / Codex: `vitrus hooks install`. Markdown sources are exposed as
+`vitrus://node/<slug>` resources. Agents see **only what the token's user is allowed to see** — ACL is
+enforced at the index layer, fail-closed. The output of an import can also be an executable
+**Agent Skill (SKILL.md)** wired live to MCP.
 
 ## Architecture
 
