@@ -10,7 +10,7 @@ import { skillFileToMarkdown } from "../skill/skill-file.js";
 import { skillToBundle, slugifyName } from "../skill/skill-export.js";
 import { validateSkillFile } from "../skill/skill-file.js";
 import { verifyClaim, renderVerify } from "../verify/verify.js";
-import { parseAcl, contentHash } from "../sync/markdown.js";
+import { parseAcl, contentHash, slugToId } from "../sync/markdown.js";
 
 export interface McpToolDef {
   name: string;
@@ -125,6 +125,55 @@ export const TOOL_DEFS: McpToolDef[] = [
     },
   },
   {
+    name: "ops_report",
+    title: "Operasyonel verimsizlik haritası",
+    description:
+      "Şirketi sistem olarak okuyup operasyonel verimsizlikleri döndürür: unowned (sahipsiz servis), bus_factor (tek-kişiye bağlı), bottleneck (aşırı yüklenmiş kişi/ekip), broken_handoff (bayat şeye bağımlılık). Tipli kenarlardan DETERMİNİSTİK türetilir (LLM yok). Şiddete göre sıralı.",
+    inputSchema: {
+      type: "object",
+      properties: { bottleneckThreshold: { type: "integer", minimum: 2, description: "bottleneck eşiği (varsayılan 4)" } },
+    },
+    outputSchema: {
+      type: "object",
+      properties: {
+        findings: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              kind: { type: "string" },
+              severity: { type: "string" },
+              message: { type: "string" },
+              relatedNodeIds: { type: "array", items: { type: "string" } },
+            },
+            required: ["kind", "severity", "message"],
+          },
+        },
+      },
+      required: ["findings"],
+    },
+  },
+  {
+    name: "resolve_conflict",
+    title: "Çelişkiyi çöz",
+    description:
+      "İki çelişen kaydı çözer: KAZANANI tutar, KAYBEDENİ supersede eder (bayatlatır). keep'in markdown KAYNAĞINA [[supersedes::<supersede>]] eklenir → çelişki çözülür, kaybeden STALE olur. 'Kaynaklar çeliştiğinde Vitrus söyler; sen hangisinin kazandığını söyle.' Yalnız ERİŞEBİLDİĞİN keep düğümünde (fail-closed).",
+    inputSchema: {
+      type: "object",
+      properties: {
+        keep: { type: "string", description: "kazanan (tutulan) düğüm slug'ı" },
+        supersede: { type: "string", description: "kaybeden (geçersiz kılınan) düğüm slug'ı" },
+        reason: { type: "string", description: "çözüm gerekçesi (opsiyonel)" },
+      },
+      required: ["keep", "supersede"],
+    },
+    outputSchema: {
+      type: "object",
+      properties: { keep: { type: "string" }, superseded: { type: "string" }, resolved: { type: "boolean" } },
+      required: ["resolved"],
+    },
+  },
+  {
     name: "provenance",
     title: "Kaynak izi",
     description:
@@ -235,6 +284,65 @@ export const TOOL_DEFS: McpToolDef[] = [
     },
     outputSchema: { type: "object", properties: { slug: { type: "string" }, improved: { type: "boolean" } }, required: ["improved"] },
   },
+  {
+    name: "record_decision",
+    title: "Karar kaydet",
+    description:
+      "Bir KARARI gerekçesi + kaynakları ile şirket beynine yazar (brainincorp/Glen 'karardan sonra yaz' döngüsü — ama Vitrus'ta provenance + çelişki kontrolüyle). Karar 'durable/decisions/' altına markdown KAYNAĞINA yazılır (sahiplik; reindex'te kalır). 'supersedes' verilirse eski karar bayat (stale) işaretlenir; 'contradicts' verilirse çelişki kenarı kurulur. YAZDIKTAN SONRA deterministik gap analizi koşar: bu karar mevcut bilgiyle çelişiyor/bayatlatıyorsa ajana GERİ söyler (glass-box — sessizce üzerine yazmaz).",
+    inputSchema: {
+      type: "object",
+      properties: {
+        decision: { type: "string", description: "karar ifadesi (ne kararlaştırıldı)" },
+        rationale: { type: "string", description: "gerekçe (neden) — opsiyonel" },
+        sources: {
+          type: "array",
+          items: { type: "string" },
+          description: "kaynaklar: iç düğüm slug'ı (→ [[mentions]] alıntı) veya dış URL",
+        },
+        supersedes: { type: "string", description: "yerini aldığı eski karar slug'ı (→ eski bayat işaretlenir)" },
+        contradicts: { type: "string", description: "çeliştiği karar slug'ı (→ açık çelişki kenarı, gap'te raporlanır)" },
+        title: { type: "string", description: "kısa başlık (slug + görünür ad); boş → karardan türetilir" },
+        acl: { type: "string", description: "izin: 'public' | 'group:eng' | 'user:bob'; boş → yazan kimlik (fail-closed)" },
+      },
+      required: ["decision"],
+    },
+    outputSchema: {
+      type: "object",
+      properties: {
+        slug: { type: "string" },
+        persisted: { type: "string" },
+        acl: { type: "array", items: { type: "object" } },
+        conflicts: { type: "array", items: { type: "object" } },
+        superseded: { type: "array", items: { type: "string" } },
+      },
+      required: ["slug", "persisted", "conflicts"],
+    },
+  },
+  {
+    name: "capture_session",
+    title: "Oturumu yakala",
+    description:
+      "Ajan muhakeme oturumunu (özet/transcript) şirket beynine KAYDEDER — 'repo hafıza değildir': denenip budanmış dallar, neden-böyle-karar-verildi. 'working/sessions/' altına PRIVATE (sahip) ACL ile yazılır + TTL (varsayılan 30 gün) sonra dream-loop otomatik bayatlatır. Glass-box otomatik yakalama (Stop hook'tan çağrılır).",
+    inputSchema: {
+      type: "object",
+      properties: {
+        summary: { type: "string", description: "oturum özeti/muhakemesi (markdown; [[wikilink]] auto-link)" },
+        title: { type: "string", description: "kısa başlık; boş → özetten türetilir" },
+        scope: { type: "string", description: "proje/rol kapsamı (retrieval scope filtresi)" },
+        ttlDays: { type: "integer", minimum: 1, description: "TTL gün (varsayılan 30); sonra dream-loop bayatlatır" },
+      },
+      required: ["summary"],
+    },
+    outputSchema: {
+      type: "object",
+      properties: {
+        slug: { type: "string" },
+        persisted: { type: "string" },
+        expiresAt: { type: ["string", "null"] },
+      },
+      required: ["slug", "persisted"],
+    },
+  },
 ];
 
 /** Ajan-yazma için markdown KAYNAĞI (sahiplik): remember/forget/improve burayı günceller. */
@@ -300,6 +408,46 @@ export async function callTool(
       return {
         structuredContent: { gaps },
         content: [text(gaps.map((g) => `[${g.kind}] ${g.message}`).join("\n") || "(boşluk yok)")],
+      };
+    }
+
+    case "ops_report": {
+      const threshold = typeof args.bottleneckThreshold === "number" ? args.bottleneckThreshold : undefined;
+      const findings = await engine.findOps(threshold ? { bottleneckThreshold: threshold } : {});
+      return {
+        structuredContent: { findings },
+        content: [text(findings.map((f) => `[${f.severity}] ${f.kind}: ${f.message}`).join("\n") || "(no operational inefficiencies)")],
+      };
+    }
+
+    case "resolve_conflict": {
+      const keep = String(args.keep ?? "").trim();
+      const drop = String(args.supersede ?? args.drop ?? "").trim();
+      if (!keep || !drop) return { content: [text("resolve_conflict: 'keep' ve 'supersede' gerekli")], isError: true };
+      const node = await engine.getNode(keep, principals); // fail-closed: erişemediğin keep → çözme
+      if (!node)
+        return { structuredContent: { resolved: false }, content: [text(`resolve_conflict: erişilemez veya yok: ${keep}`)], isError: false };
+      const reason = args.reason ? ` (${String(args.reason)})` : "";
+      const newContent = `${node.content}\n\nThis [[supersedes::${drop}]] — conflict resolved${reason}.`;
+      const updated: Omit<KnowledgeNode, "id" | "createdAt" | "updatedAt"> = {
+        slug: node.slug,
+        type: node.type,
+        tier: node.tier,
+        title: node.title,
+        content: newContent,
+        frontmatter: node.frontmatter,
+        salience: node.salience,
+        provenance: node.provenance,
+        acl: node.acl,
+        contentHash: contentHash(newContent),
+      };
+      if (ctx.store) ctx.store.writeNode(updated);
+      await engine.putNode(updated);
+      await engine.refreshEntities();
+      return {
+        structuredContent: { keep: node.slug, superseded: slugToId(drop), resolved: true },
+        content: [text(`✓ conflict resolved: "${node.slug}" supersedes "${slugToId(drop)}" (now stale)`), resourceLink(node.slug, null)],
+        isError: false,
       };
     }
 
@@ -431,6 +579,121 @@ export async function callTool(
       if (ctx.store) ctx.store.writeNode(updated);
       await engine.putNode(updated);
       return { structuredContent: { slug, improved: true }, content: [text(`✓ improved: ${slug}`)], isError: false };
+    }
+
+    case "record_decision": {
+      const decision = String(args.decision ?? "").trim();
+      if (!decision) return { content: [text("record_decision: 'decision' gerekli")], isError: true };
+      const rationale = args.rationale ? String(args.rationale).trim() : "";
+      const sources = Array.isArray(args.sources)
+        ? (args.sources as unknown[]).map((s) => String(s).trim()).filter(Boolean)
+        : [];
+      const supersedes = args.supersedes ? slugToId(String(args.supersedes)) : "";
+      const contradicts = args.contradicts ? slugToId(String(args.contradicts)) : "";
+      const title = (args.title ? String(args.title) : decision.split(/\s+/).slice(0, 8).join(" ")).slice(0, 80);
+      const owner = principals?.[0];
+      const acl: AclEntry[] = args.acl ? parseAcl(String(args.acl)) : owner ? [{ kind: "user", principal: owner }] : [];
+
+      // Gövde: karar + gerekçe + kaynaklar (iç slug → [[mentions]] alıntı; dış → link) + supersedes/contradicts.
+      // Wikilink'ler putNode'da otomatik tipli kenara dönüşür (LLM'siz) → gap analizi besler.
+      const isUrl = (s: string) => /^https?:\/\//i.test(s);
+      const lines: string[] = [`# ${title}`, "", decision];
+      if (rationale) lines.push("", "## Rationale", rationale);
+      if (sources.length) {
+        lines.push("", "## Sources");
+        for (const s of sources) lines.push(isUrl(s) ? `- ${s}` : `- [[mentions::${slugToId(s)}]]`);
+      }
+      if (supersedes) lines.push("", `Supersedes [[supersedes::${supersedes}]].`);
+      if (contradicts) lines.push("", `This [[contradicts::${contradicts}]] — conflict open.`);
+      const content = lines.join("\n");
+
+      const slug = `durable/decisions/${slugifyName(title)}`;
+      const node: Omit<KnowledgeNode, "id" | "createdAt" | "updatedAt"> = {
+        slug,
+        type: "decision",
+        tier: "durable",
+        title,
+        content,
+        frontmatter: {},
+        salience: 0.7, // kararlar önemli (working note'tan yüksek)
+        provenance: { connector: "agent", sourceId: slug, uri: null, capturedAt: new Date().toISOString() },
+        acl,
+        contentHash: contentHash(content),
+      };
+      let persisted = "index-only";
+      if (ctx.store) {
+        ctx.store.writeNode(node); // sahiplik: markdown kaynağına yaz → reindex'te kalır
+        persisted = "markdown+index";
+      }
+      await engine.putNode(node);
+      await engine.refreshEntities();
+      await engine.refreshSalience();
+
+      // Glass-box: yazdıktan SONRA deterministik gap analizi — bu karar neyle çelişiyor / neyi bayatlattı?
+      const saved = await engine.getNode(slug, principals);
+      const gaps = saved ? await engine.findGaps() : [];
+      const mine = saved ? gaps.filter((g) => g.relatedNodeIds.includes(saved.id)) : [];
+      const conflicts = mine
+        .filter((g) => g.kind === "contradiction")
+        .map((g) => ({ kind: g.kind, message: g.message }));
+      const superseded = supersedes ? [supersedes] : [];
+
+      const banner = conflicts.length
+        ? `\n⚠ ${conflicts.length} contradiction(s): ` + conflicts.map((c) => c.message).join(" | ")
+        : "";
+      return {
+        structuredContent: { slug, persisted, acl, conflicts, superseded },
+        content: [
+          text(
+            `✓ decision recorded: ${slug} (${persisted})` +
+              (supersedes ? ` · supersedes ${supersedes} (now stale)` : "") +
+              (persisted === "index-only" ? " — ⚠ set VITRUS_BRAIN to persist to markdown source" : "") +
+              banner
+          ),
+          resourceLink(slug, null),
+        ],
+        isError: false,
+      };
+    }
+
+    case "capture_session": {
+      const summary = String(args.summary ?? "").trim();
+      if (!summary) return { content: [text("capture_session: 'summary' gerekli")], isError: true };
+      const title = (args.title ? String(args.title) : summary.split(/\s+/).slice(0, 8).join(" ")).slice(0, 60);
+      const owner = principals?.[0];
+      const acl: AclEntry[] = owner ? [{ kind: "user", principal: owner }] : []; // PRIVATE (fail-closed)
+      const ttlDays = typeof args.ttlDays === "number" && args.ttlDays > 0 ? Math.floor(args.ttlDays) : 30;
+      const capturedAt = new Date().toISOString();
+      const expiresAt = new Date(Date.parse(capturedAt) + ttlDays * 86_400_000).toISOString();
+      const slug = `working/sessions/${slugifyName(title)}`;
+      const node: Omit<KnowledgeNode, "id" | "createdAt" | "updatedAt"> = {
+        slug,
+        type: "session",
+        tier: "working",
+        title,
+        content: summary,
+        frontmatter: {},
+        salience: 0.4, // oturumlar düşük başlangıç önemi → TTL ile bayatlar
+        provenance: { connector: "agent", sourceId: slug, uri: null, capturedAt },
+        acl,
+        contentHash: contentHash(summary),
+        scope: args.scope ? String(args.scope) : undefined,
+        expiresAt,
+      };
+      let persisted = "index-only";
+      if (ctx.store) {
+        ctx.store.writeNode(node);
+        persisted = "markdown+index";
+      }
+      await engine.putNode(node);
+      return {
+        structuredContent: { slug, persisted, expiresAt },
+        content: [
+          text(`✓ session captured: ${slug} (${persisted}) · expires ${expiresAt.slice(0, 10)}`),
+          resourceLink(slug, null),
+        ],
+        isError: false,
+      };
     }
 
     default:

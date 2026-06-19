@@ -18,6 +18,8 @@ import type {
 } from "./types.js";
 import type { JobQueue } from "./job-queue.js";
 import type { AttentionItem, AttentionOpts } from "../attention/attention.js";
+import type { OpsFinding } from "../ops/ops.js";
+import type { Conflict } from "../conflicts/conflicts.js";
 
 export interface BrainEngine {
   // --- yaşam döngüsü ---
@@ -56,16 +58,16 @@ export interface BrainEngine {
   // --- okuma: graf ---
   /** Tek düğümü slug ile getir; principals verilirse ACL uygulanır (yetkisiz → null). */
   getNode(slug: string, principals?: string[]): Promise<KnowledgeNode | null>;
-  /** Bi-temporal: varsayılan yalnız "şimdi doğru" (expired_at IS NULL); includeExpired ile tarih. */
-  getConnections(nodeId: string, maxHops?: number, opts?: { includeExpired?: boolean }): Promise<TypedEdge[]>;
+  /** Bi-temporal: varsayılan yalnız "şimdi doğru" (expired_at IS NULL); includeExpired ile tarih; asof ile zaman-yolculuğu (o tarihte canlı kenarlar). */
+  getConnections(nodeId: string, maxHops?: number, opts?: { includeExpired?: boolean; asof?: string }): Promise<TypedEdge[]>;
   /** Bir düğümün chunk'ları (denetlenebilirlik — F6). */
   getChunks(slug: string): Promise<{ idx: number; content: string }[]>;
   /** Sorguyu en çok DESTEKLEYEN chunk'lar (skorlu, sıralı) — "hangi chunk cevabı verdi". */
   supportingChunks(slug: string, query: string): Promise<{ idx: number; content: string; score: number }[]>;
   graphQuery(fromSlug: string, edgeType?: EdgeType): Promise<KnowledgeNode[]>;
   listEntities(minMentions?: number): Promise<Entity[]>;
-  /** C3: SVG graf görselleştirmesi için düğüm+kenar anlık görüntüsü (bayat/gap işaretli). */
-  graphSnapshot(opts?: { limit?: number }): Promise<GraphSnapshot>;
+  /** C3: SVG graf görselleştirmesi için düğüm+kenar anlık görüntüsü (bayat/gap işaretli). asof: o tarihteki graf (zaman-yolculuğu). */
+  graphSnapshot(opts?: { limit?: number; asof?: string }): Promise<GraphSnapshot>;
 
   // --- bakım (rüya döngüsü bunları çağırır — Faz 1/2) ---
   refreshEntities(): Promise<void>;
@@ -78,6 +80,10 @@ export interface BrainEngine {
   /** B2: expires_at geçmiş düğümleri soft-delete et (TTL süpürmesi). Sayı döner. */
   expireStale(): Promise<number>;
   findGaps(): Promise<Gap[]>; // bayat / kaynaksız / çelişki / tek-nokta
+  /** Operasyonel verimsizlikler (ops-haritası): unowned / bus_factor / bottleneck / broken_handoff. Deterministik. */
+  findOps(opts?: { bottleneckThreshold?: number }): Promise<OpsFinding[]>;
+  /** Çelişkiler (çift-taraflı + çözüm durumu): "kaynaklar çeliştiğinde Vitrus söyler". */
+  findConflicts(): Promise<Conflict[]>;
   /** Proaktif "dikkatini bekleyenler" (v1): bayat kalıcı bilgi + çözülmemiş incident + yaşlanan boşluk. `now` ISO. */
   attention(now: string, opts?: AttentionOpts): Promise<AttentionItem[]>;
 

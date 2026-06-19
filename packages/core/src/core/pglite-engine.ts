@@ -32,6 +32,8 @@ import { RERANK_POOL_FACTOR, type Reranker } from "./reranker.js";
 import { JobQueue } from "./job-queue.js";
 import { PgliteDriver, type SqlDriver } from "./sql-driver.js";
 import { structuralGaps, coverageGap, gapsForNodes, type GapNodeView } from "../gap/gaps.js";
+import { operationalFindings, type OpsNodeView, type OpsFinding } from "../ops/ops.js";
+import { buildConflicts, type Conflict } from "../conflicts/conflicts.js";
 import { computeAttention, type AttentionItem, type AttentionNodeView, type AttentionOpts } from "../attention/attention.js";
 import { scoreConfidence } from "../surface/surface.js";
 import { ExtractiveSynthesizer, type Synthesizer } from "./synthesizer.js";
@@ -557,10 +559,12 @@ export class PgliteEngine implements BrainEngine {
   async getConnections(
     nodeId: string,
     maxHops = 1,
-    opts: { includeExpired?: boolean } = {}
+    opts: { includeExpired?: boolean; asof?: string } = {}
   ): Promise<TypedEdge[]> {
     // Varsayılan: yalnız "şimdi doğru" kenarlar (expired_at IS NULL). Bi-temporal.
+    // asof verilirse ZAMAN-YOLCULUĞU: o tarihte canlı kenarlar (created_at<=asof, henüz expire/valid_to olmamış).
     const includeExpired = opts.includeExpired ?? false;
+    const asof = opts.asof ?? null;
     const seen = new Set<string>();
     const out: TypedEdge[] = [];
     let frontier = [this.qid(nodeId)];
@@ -576,9 +580,15 @@ export class PgliteEngine implements BrainEngine {
           valid_to: Date | string | null;
         }>(
           `SELECT from_node, to_node, edge_type, confidence, valid_from, valid_to
-           FROM edges WHERE from_node=$1 AND ($2 OR expired_at IS NULL)
-             AND ($3::text IS NULL OR org_id IS NOT DISTINCT FROM $3)`,
-          [from, includeExpired, this.org ?? null]
+           FROM edges WHERE from_node=$1
+             AND ($3::text IS NULL OR org_id IS NOT DISTINCT FROM $3)
+             AND (CASE WHEN $4::text IS NOT NULL THEN
+                    created_at <= $4::timestamptz
+                    AND (expired_at IS NULL OR expired_at > $4::timestamptz)
+                    AND (valid_from IS NULL OR valid_from <= $4::timestamptz)
+                    AND (valid_to IS NULL OR valid_to > $4::timestamptz)
+                  ELSE ($2 OR expired_at IS NULL) END)`,
+          [from, includeExpired, this.org ?? null, asof]
         );
         for (const e of rows) {
           const key = `${e.from_node}->${e.to_node}:${e.edge_type}`;
@@ -734,8 +744,9 @@ export class PgliteEngine implements BrainEngine {
     return rows.length;
   }
 
-  async graphSnapshot(opts: { limit?: number } = {}): Promise<GraphSnapshot> {
+  async graphSnapshot(opts: { limit?: number; asof?: string } = {}): Promise<GraphSnapshot> {
     const limit = opts.limit ?? 60;
+    const asof = opts.asof ?? null; // bi-temporal zaman-yolculuğu: o tarihteki graf
     const { rows: nodeRows } = await this.db.query<{ id: string; slug: string; type: NodeType; tier: Tier }>(
       `SELECT id, slug, type, tier FROM nodes WHERE deleted_at IS NULL
          AND ($2::text IS NULL OR org_id IS NOT DISTINCT FROM $2)
@@ -748,8 +759,15 @@ export class PgliteEngine implements BrainEngine {
     const id2slug = new Map(nodes.map((n) => [n.id, n.slug]));
 
     const { rows: edgeRows } = await this.db.query<{ from_node: string; to_node: string; edge_type: EdgeType }>(
-      "SELECT from_node, to_node, edge_type FROM edges WHERE expired_at IS NULL AND ($1::text IS NULL OR org_id IS NOT DISTINCT FROM $1)",
-      [this.org ?? null]
+      `SELECT from_node, to_node, edge_type FROM edges
+       WHERE ($1::text IS NULL OR org_id IS NOT DISTINCT FROM $1)
+         AND (CASE WHEN $2::text IS NOT NULL THEN
+                created_at <= $2::timestamptz
+                AND (expired_at IS NULL OR expired_at > $2::timestamptz)
+                AND (valid_from IS NULL OR valid_from <= $2::timestamptz)
+                AND (valid_to IS NULL OR valid_to > $2::timestamptz)
+              ELSE expired_at IS NULL END)`,
+      [this.org ?? null, asof]
     );
     // bayat = supersede kenarının hedefi; gap = findGaps relatedNodeIds.
     const stale = new Set(edgeRows.filter((e) => e.edge_type === "supersedes").map((e) => e.to_node));
@@ -810,6 +828,45 @@ export class PgliteEngine implements BrainEngine {
       validTo: e.valid_to ? toISO(e.valid_to) : null,
     }));
     return structuralGaps(views, edges);
+  }
+
+  /** Operasyonel verimsizlikler (ops-haritası) — findGaps deseni + redundant_tool için dedupReview (pgvector). */
+  async findOps(opts: { bottleneckThreshold?: number; redundantThreshold?: number } = {}): Promise<OpsFinding[]> {
+    const { rows: nodeRows } = await this.db.query<{ id: string; slug: string; type: NodeType }>(
+      `SELECT id, slug, type FROM nodes WHERE deleted_at IS NULL AND ($1::text IS NULL OR org_id IS NOT DISTINCT FROM $1)`,
+      [this.org ?? null]
+    );
+    const { rows: edgeRows } = await this.db.query<{ from_node: string; to_node: string; edge_type: EdgeType }>(
+      "SELECT from_node, to_node, edge_type FROM edges WHERE expired_at IS NULL AND ($1::text IS NULL OR org_id IS NOT DISTINCT FROM $1)",
+      [this.org ?? null]
+    );
+    const views: OpsNodeView[] = nodeRows.map((r) => ({ id: r.id, slug: r.slug, type: r.type }));
+    const edges: TypedEdge[] = edgeRows.map((e) => ({ fromId: e.from_node, toId: e.to_node, type: e.edge_type, confidence: 1 }));
+    // redundant_tool: embedding-benzer servis çiftleri (pgvector; varsayılan eşik 0.92). Hata → boş.
+    let similarPairs: { a: string; b: string; sim: number }[] = [];
+    try {
+      similarPairs = await this.dedupReview(opts.redundantThreshold ?? 0.92);
+    } catch {
+      similarPairs = [];
+    }
+    return operationalFindings(views, edges, { bottleneckThreshold: opts.bottleneckThreshold, similarPairs });
+  }
+
+  /** Çelişki çözüm görünümü — contradiction gap'leri + supersedes kenarları + düğüm başlıkları → çift-taraflı Conflict. */
+  async findConflicts(): Promise<Conflict[]> {
+    const contradictions = (await this.findGaps()).filter((g) => g.kind === "contradiction");
+    if (contradictions.length === 0) return [];
+    const { rows: nodeRows } = await this.db.query<{ id: string; slug: string; title: string }>(
+      `SELECT id, slug, title FROM nodes WHERE deleted_at IS NULL AND ($1::text IS NULL OR org_id IS NOT DISTINCT FROM $1)`,
+      [this.org ?? null]
+    );
+    const map = new Map(nodeRows.map((r) => [r.id, { slug: r.slug, title: r.title }]));
+    const { rows: edgeRows } = await this.db.query<{ from_node: string; to_node: string }>(
+      "SELECT from_node, to_node FROM edges WHERE edge_type='supersedes' AND expired_at IS NULL AND ($1::text IS NULL OR org_id IS NOT DISTINCT FROM $1)",
+      [this.org ?? null]
+    );
+    const sup: TypedEdge[] = edgeRows.map((e) => ({ fromId: e.from_node, toId: e.to_node, type: "supersedes" as const, confidence: 1 }));
+    return buildConflicts(contradictions, sup, map);
   }
 
   /** Proaktif "dikkatini bekleyenler" (v1) — org-scoped; findGaps deseniyle veri toplar, computeAttention'a verir. */
