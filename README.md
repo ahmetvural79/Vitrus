@@ -44,11 +44,12 @@ shown as a gap, never papered over.
 
 ## What's new (2026-06)
 
-- **Agent-native API hub.** Point Vitrus at any REST endpoint and pull it into the brain: `vitrus ingest rest --config <c.json>` (method, headers, params, body + response→record mapping). The cloud dashboard ships a visual API-integration drawer.
+- **Agent-native API hub (Gorilla pattern).** Import an OpenAPI spec (`vitrus api import <spec>`), retrieve the right endpoint for a task (`vitrus api search`), and **verify a call deterministically before running it** (`vitrus api verify` → valid / missing_args / wrong_type / unknown_args / **unknown_endpoint** / deprecated) — the anti-hallucination gate. `vitrus api call` verifies, then executes. Also `vitrus ingest rest --config <c.json>` to pull any REST response into the brain. Visual API-integration drawer in the dashboard.
+- **Day-one onboarding.** `vitrus onboard "<role>"` builds a sourced, pedagogically-ordered learning path from the brain (who to ask + what's not documented yet); `vitrus quiz "<topic>"` generates recall questions graded deterministically by `verify`.
 - **`--explain` ranking attribution.** `vitrus search "<q>" --explain` prints each hit's score factors: vector/bm25/entity ranks + tier/cosine and the new **graph-adjacency / cross-source** boosts.
 - **Graph-signal ranking.** A deterministic, ACL-safe re-scoring after hybrid search: results connected to other top hits, or corroborated across sources, rise.
 - **Native Voyage + ZeroEntropy embedders** (Matryoshka-fit to the frozen `vector(1536)` schema — no migration).
-- **MCP surface 13 → 21 tools** (`entities`, `graph_query`, `get_node`, `chunks`, `attention`, `conflicts`, …; content tools are ACL fail-closed).
+- **MCP surface 13 → 27 tools** (`entities`, `graph_query`, `get_node`, `chunks`, `attention`, `conflicts`, `api_search`/`api_verify`/`api_call`, `onboarding_path`, `quiz`, …; content tools are ACL fail-closed).
 - **One-command capture.** `vitrus capture "<note>"` (arg/file/stdin) + a watched inbox folder (`vitrus ingest inbox <dir>`) for mobile capture.
 - **12 prebuilt skills.** `vitrus skills list|install` — a validated SKILL.md library that teaches agents how to use Vitrus.
 

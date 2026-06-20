@@ -32,7 +32,8 @@ export type NodeType =
   | "note"
   | "meeting"
   | "document"
-  | "session"; // ajan oturum transcript'i (B1 — "repo hafıza değildir")
+  | "session" // ajan oturum transcript'i (B1 — "repo hafıza değildir")
+  | "api_endpoint"; // M1 Faz B — agent-native API kartı (Gorilla deseni: retrievable + verify edilebilir endpoint)
 
 /** İki çalışma modu. Kurumsal MVP "business" ile başlar (nesne-ağırlıklı). */
 export type Mode = "business" | "research";

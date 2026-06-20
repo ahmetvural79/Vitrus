@@ -713,6 +713,78 @@ async function main() {
       return;
     }
 
+    case "onboard": {
+      // M2 — Day-One: rol/alan için beyinden sıralı, kaynaklı öğrenme yolu (+ kime-sor + boşluklar).
+      await engine.init();
+      const role = rest.filter((a) => !a.startsWith("--")).join(" ");
+      if (!role) { console.log('usage: vitrus onboard "<role or area>" [--as <user>]'); break; }
+      const { buildCurriculum, renderCurriculum } = await import("../onboard/curriculum.js");
+      const principals = asUser ? await engine.expandPrincipals(asUser) : undefined;
+      console.log(renderCurriculum(await buildCurriculum(engine, role, { principals })));
+      break;
+    }
+
+    case "quiz": {
+      // M2 — bilgi sınavı: konudan soru üret (cevap `vitrus verify` ile deterministik notlanır).
+      await engine.init();
+      const topic = rest.filter((a) => !a.startsWith("--")).join(" ");
+      if (!topic) { console.log('usage: vitrus quiz "<topic>" [--as <user>]  (grade an answer with: vitrus verify "<answer>")'); break; }
+      const { generateQuiz } = await import("../onboard/quiz.js");
+      const principals = asUser ? await engine.expandPrincipals(asUser) : undefined;
+      const qs = await generateQuiz(engine, topic, { principals });
+      qs.forEach((q, i) => console.log(`${i + 1}. ${q.question}`));
+      console.log(qs.length ? '\nAnswer, then grade with: vitrus verify "<your answer>"' : "(no questions — first: vitrus import <dir>)");
+      break;
+    }
+
+    case "api": {
+      // M1 Faz B — Agent-Native API Hub (Gorilla): import/search/describe/verify/call.
+      await engine.init();
+      const sub = rest[0];
+      const takeOne = (flag: string): string | undefined => { const i = rest.indexOf(flag); return i >= 0 && rest[i + 1] ? rest[i + 1] : undefined; };
+      const { normalizeOpenApi, cardToNode, cardToContent } = await import("../api-hub/normalize.js");
+      const { apiSearch, findEndpoint } = await import("../api-hub/retrieve.js");
+      const { verifyApiCall, renderVerdict } = await import("../api-hub/verify-call.js");
+      if (sub === "import") {
+        const spec = JSON.parse(readFileSync(rest[1], "utf8"));
+        const cards = normalizeOpenApi(spec, takeOne("--name"));
+        for (const c of cards) await engine.putNode(cardToNode(c));
+        await engine.refreshEntities();
+        console.log(`✓ imported ${cards.length} endpoints from "${cards[0]?.apiName ?? "api"}" → durable/apis/`);
+        break;
+      }
+      if (sub === "search") {
+        const task = rest.slice(1).filter((a) => !a.startsWith("--")).join(" ");
+        const hits = await apiSearch(engine, task, { limit: 6 });
+        for (const h of hits) console.log(`  ${h.score.toFixed(4)}  ${h.card.method} ${h.card.path}  (${h.card.operationId}) — ${h.card.summary}`);
+        if (!hits.length) console.log("(no API endpoints — first: vitrus api import <spec.json>)");
+        break;
+      }
+      if (sub === "describe") {
+        const card = await findEndpoint(engine, rest[1] ?? "");
+        if (!card) { console.log(`endpoint not found: ${rest[1] ?? ""} (try: vitrus api search "...")`); break; }
+        console.log(cardToContent(card));
+        break;
+      }
+      if (sub === "verify" || sub === "call") {
+        const ref = rest[1] ?? "";
+        const args = ((): Record<string, unknown> => { const a = takeOne("--args"); try { return a ? JSON.parse(a) : {}; } catch { return {}; } })();
+        const card = await findEndpoint(engine, ref);
+        if (sub === "verify") { console.log(renderVerdict(verifyApiCall(card, args), ref)); break; }
+        if (!card) { console.log(renderVerdict(verifyApiCall(undefined, args), ref)); console.log("✗ blocked — endpoint not found (possible hallucination)"); break; }
+        const { callApi } = await import("../api-hub/execute.js");
+        const r = await callApi(card, args, { token: takeOne("--token"), baseUrl: takeOne("--base"), dryRun: rest.includes("--dry-run"), allowDeprecated: rest.includes("--allow-deprecated") });
+        console.log(renderVerdict(r.verdict, ref));
+        if (!r.ok) { console.log("✗ blocked — fix the call before executing"); break; }
+        if (rest.includes("--dry-run")) { console.log(`(dry-run) ${card.method} ${r.url}`); break; }
+        console.log(`→ HTTP ${r.status}  ${card.method} ${r.url}`);
+        console.log(typeof r.body === "string" ? r.body.slice(0, 800) : JSON.stringify(r.body, null, 2).slice(0, 800));
+        break;
+      }
+      console.log("usage: vitrus api <import <spec.json> [--name n] | search \"<task>\" | describe <ref> | verify <ref> --args '{}' | call <ref> --args '{}' [--token t] [--base u] [--dry-run]>");
+      break;
+    }
+
     case "capture": {
       // Tek-komut yakalama (gbrain capture paritesi): arg / --file <path> / stdin → working/inbox/<date>-<hash> notu.
       // usage: vitrus capture "<text>" | vitrus capture --file <path> | echo ... | vitrus capture  [--title <t>] [--as <owner>] [--scope <x>]
@@ -899,7 +971,7 @@ async function main() {
 
     default:
       console.log(
-        "usage: vitrus <init | import <dir> | capture \"<text>\" [--file f|--title t|--as u] | ingest <slack|github|sessions|email|calendar|inbox|notion|linear|jira|drive> <fixture> | ingest rest --config <c.json> | ingest <github --live --repo <o/n> | slack --live --channel <Cxxxx> | notion|linear|drive|gmail --live | jira --live --site <co> --email <e>> [--token <t>] [--since <iso>] [--queue] | webhook <github|slack|connector> <event> | sync <dir> | search <q> [--as <user>] [--scope <x>] [--explain] [--postgres <url>] | think <q> [--html f|--json] [--scope <x>] | verify <claim> [--as <user>] | decide \"<decision>\" [--why <r>] [--supersedes <slug>] [--contradicts <slug>] [--source <s>]... [--as <user>] | gaps | ops | conflicts | resolve <keep> <supersede> | entities | dedup | dream | purge [days] | audit [<slug>] | dashboard [--html f] [--graph [--asof <ISO>]] | chunks <slug> [q] | agent run <q> | agent work [--max N] | jobs | bench gapeval [--out <f> --negative-control --determinism] | doctor | config | version | skill <topic> [--publish --out <dir> | --eval] | skills [list|show <name>|install [--out d]] | skill-eval <name> [--out <dir>] | skill-curate [--out <dir>] | skill-optimize <name> [--apply --out <dir>] | hooks install [--agent claude|cursor|codex] [--dir <path>] | mcp [--http <port>]>"
+        "usage: vitrus <init | import <dir> | capture \"<text>\" [--file f|--title t|--as u] | api <import|search|describe|verify|call> | ingest <slack|github|sessions|email|calendar|inbox|notion|linear|jira|drive> <fixture> | ingest rest --config <c.json> | ingest <github --live --repo <o/n> | slack --live --channel <Cxxxx> | notion|linear|drive|gmail --live | jira --live --site <co> --email <e>> [--token <t>] [--since <iso>] [--queue] | webhook <github|slack|connector> <event> | sync <dir> | search <q> [--as <user>] [--scope <x>] [--explain] [--postgres <url>] | think <q> [--html f|--json] [--scope <x>] | verify <claim> [--as <user>] | decide \"<decision>\" [--why <r>] [--supersedes <slug>] [--contradicts <slug>] [--source <s>]... [--as <user>] | gaps | ops | conflicts | resolve <keep> <supersede> | entities | dedup | dream | purge [days] | audit [<slug>] | dashboard [--html f] [--graph [--asof <ISO>]] | chunks <slug> [q] | agent run <q> | agent work [--max N] | jobs | bench gapeval [--out <f> --negative-control --determinism] | doctor | config | version | skill <topic> [--publish --out <dir> | --eval] | skills [list|show <name>|install [--out d]] | skill-eval <name> [--out <dir>] | skill-curate [--out <dir>] | skill-optimize <name> [--apply --out <dir>] | hooks install [--agent claude|cursor|codex] [--dir <path>] | mcp [--http <port>]>"
       );
   }
 

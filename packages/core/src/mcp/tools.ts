@@ -403,6 +403,50 @@ export const TOOL_DEFS: McpToolDef[] = [
     inputSchema: { type: "object", properties: {} },
     outputSchema: { type: "object", properties: { conflicts: { type: "array", items: { type: "object" } } }, required: ["conflicts"] },
   },
+  // ── M1 Faz B: Agent-Native API Hub (Gorilla) ──
+  {
+    name: "api_search",
+    title: "API endpoint ara",
+    description: "Göreve en uygun API endpoint'ini bul (agent-native API hub; önce 'vitrus api import <spec>').",
+    inputSchema: { type: "object", properties: { task: { type: "string" }, limit: { type: "integer", default: 5 } }, required: ["task"] },
+    outputSchema: { type: "object", properties: { endpoints: { type: "array", items: { type: "object" } } }, required: ["endpoints"] },
+  },
+  {
+    name: "api_describe",
+    title: "API endpoint kartı",
+    description: "Bir endpoint'i operationId veya 'METHOD /path' ile aç: parametreler, body, auth.",
+    inputSchema: { type: "object", properties: { ref: { type: "string" } }, required: ["ref"] },
+    outputSchema: { type: "object", properties: { found: { type: "boolean" }, card: { type: ["object", "null"] } }, required: ["found"] },
+  },
+  {
+    name: "api_verify",
+    title: "API çağrısı doğrula (anti-halüsinasyon)",
+    description: "Önerilen endpoint+argümanları spec'e karşı DETERMİNİSTİK doğrula (valid/missing_args/wrong_type/unknown_args/unknown_endpoint/deprecated) — ÇAĞIRMADAN ÖNCE.",
+    inputSchema: { type: "object", properties: { ref: { type: "string" }, args: { type: "object" } }, required: ["ref"] },
+    outputSchema: { type: "object", properties: { status: { type: "string" }, ok: { type: "boolean" }, issues: { type: "array", items: { type: "string" } } }, required: ["status", "ok"] },
+  },
+  {
+    name: "api_call",
+    title: "API çağır (doğrula→çalıştır)",
+    description: "Doğrula, geçerse çalıştır. verdict.ok=false → çağrı YOK. dryRun ile yalnız doğrula+URL. token = Bearer auth.",
+    inputSchema: { type: "object", properties: { ref: { type: "string" }, args: { type: "object" }, token: { type: "string" }, baseUrl: { type: "string" }, dryRun: { type: "boolean", default: false } }, required: ["ref"] },
+    outputSchema: { type: "object", properties: { ok: { type: "boolean" }, status: { type: ["integer", "null"] }, verdict: { type: "object" } }, required: ["ok", "verdict"] },
+  },
+  // ── M2: Onboarding / Day-One ──
+  {
+    name: "onboarding_path",
+    title: "Onboarding yolu",
+    description: "Bir rol/alan için beyinden sıralı, kaynaklı öğrenme yolu + kime-sor + belgesiz boşluklar (gap-flywheel). Yeni eleman/ajan onboarding'i.",
+    inputSchema: { type: "object", properties: { role: { type: "string" }, limit: { type: "integer", default: 12 } }, required: ["role"] },
+    outputSchema: { type: "object", properties: { role: { type: "string" }, steps: { type: "array", items: { type: "object" } }, gaps: { type: "array", items: { type: "object" } } }, required: ["role", "steps"] },
+  },
+  {
+    name: "quiz",
+    title: "Bilgi sınavı üret",
+    description: "Bir konudan aktif-geri-çağırma soruları üret; cevap 'verify' ile deterministik notlanır (grounded/contradicted/unsupported).",
+    inputSchema: { type: "object", properties: { topic: { type: "string" }, count: { type: "integer", default: 5 } }, required: ["topic"] },
+    outputSchema: { type: "object", properties: { questions: { type: "array", items: { type: "object" } } }, required: ["questions"] },
+  },
 ];
 
 /** Ajan-yazma için markdown KAYNAĞI (sahiplik): remember/forget/improve burayı günceller. */
@@ -859,6 +903,63 @@ export async function callTool(
           text(conflicts.map((c) => `${c.resolved ? "✓" : "⚠"} "${c.a.slug}" ⇄ "${c.b.slug}" (${c.kind})`).join("\n") || "(çelişki yok)"),
         ],
       };
+    }
+
+    case "api_search": {
+      const { apiSearch } = await import("../api-hub/retrieve.js");
+      const hits = await apiSearch(engine, String(args.task ?? ""), { limit: typeof args.limit === "number" ? args.limit : 5, principals });
+      const endpoints = hits.map((h) => ({ operationId: h.card.operationId, method: h.card.method, path: h.card.path, summary: h.card.summary, score: Number(h.score.toFixed(5)), slug: h.slug }));
+      return {
+        structuredContent: { endpoints },
+        content: [text(endpoints.map((e) => `${e.method} ${e.path} (${e.operationId}) — ${e.summary}`).join("\n") || "(no API endpoints)"), ...hits.map((h) => resourceLink(h.slug, null))],
+      };
+    }
+
+    case "api_describe": {
+      const { findEndpoint } = await import("../api-hub/retrieve.js");
+      const { cardToContent } = await import("../api-hub/normalize.js");
+      const card = await findEndpoint(engine, String(args.ref ?? ""), principals);
+      if (!card) return { structuredContent: { found: false, card: null }, content: [text(`not found: ${String(args.ref ?? "")}`)] };
+      return { structuredContent: { found: true, card }, content: [text(cardToContent(card))] };
+    }
+
+    case "api_verify": {
+      const { findEndpoint } = await import("../api-hub/retrieve.js");
+      const { verifyApiCall, renderVerdict } = await import("../api-hub/verify-call.js");
+      const card = await findEndpoint(engine, String(args.ref ?? ""), principals);
+      const v = verifyApiCall(card, (args.args as Record<string, unknown>) ?? {});
+      return { structuredContent: { status: v.status, ok: v.ok, issues: v.issues, endpoint: v.endpoint ?? null }, content: [text(renderVerdict(v, String(args.ref ?? "")))], isError: !v.ok };
+    }
+
+    case "api_call": {
+      const { findEndpoint } = await import("../api-hub/retrieve.js");
+      const { verifyApiCall, renderVerdict } = await import("../api-hub/verify-call.js");
+      const { callApi } = await import("../api-hub/execute.js");
+      const ref = String(args.ref ?? "");
+      const callArgs = (args.args as Record<string, unknown>) ?? {};
+      const card = await findEndpoint(engine, ref, principals);
+      if (!card) {
+        const v = verifyApiCall(undefined, callArgs);
+        return { structuredContent: { ok: false, status: null, verdict: v }, content: [text(renderVerdict(v, ref))], isError: true };
+      }
+      const r = await callApi(card, callArgs, { token: args.token ? String(args.token) : undefined, baseUrl: args.baseUrl ? String(args.baseUrl) : undefined, dryRun: args.dryRun === true });
+      return {
+        structuredContent: { ok: r.ok, status: r.status ?? null, verdict: r.verdict, url: r.url ?? null, body: r.body ?? null },
+        content: [text(renderVerdict(r.verdict, ref) + (r.ok && args.dryRun !== true ? `\n→ HTTP ${r.status}` : ""))],
+        isError: !r.ok,
+      };
+    }
+
+    case "onboarding_path": {
+      const { buildCurriculum, renderCurriculum } = await import("../onboard/curriculum.js");
+      const c = await buildCurriculum(engine, String(args.role ?? ""), { limit: typeof args.limit === "number" ? args.limit : 12, principals });
+      return { structuredContent: c, content: [text(renderCurriculum(c)), ...c.steps.map((s) => resourceLink(s.slug, s.uri))] };
+    }
+
+    case "quiz": {
+      const { generateQuiz } = await import("../onboard/quiz.js");
+      const questions = await generateQuiz(engine, String(args.topic ?? ""), { count: typeof args.count === "number" ? args.count : 5, principals });
+      return { structuredContent: { questions }, content: [text(questions.map((q, i) => `${i + 1}. ${q.question}`).join("\n") || "(no questions)")] };
     }
 
     default:
