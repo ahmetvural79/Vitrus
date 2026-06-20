@@ -27,7 +27,8 @@ all in **portable Markdown files you own**.
 - 🎓 **Onboard a new hire (or agent) on day one.** A sourced, pedagogically-ordered learning path with *who to ask* and *what's still undocumented*, plus quizzes graded against the brain. `vitrus onboard|quiz`.
 - 🔎 **Trust the ranking.** `--explain` prints every score factor; graph-signal ranking promotes results that are connected to, or corroborated across, other sources.
 - ⚡ **Capture without friction.** One-command notes, ingest from any REST endpoint, or drop files in a watched inbox folder. `vitrus capture` · `vitrus ingest rest|inbox`.
-- 🤖 **27 MCP tools** so Claude, Cursor and your own agents share the exact same trusted, permission-aware memory.
+- 📥 **Bring the notes you already have.** Import an Obsidian vault, a Notion export, or your ChatGPT/Claude history — or migrate from GBrain — straight into the same glass-box brain. `vitrus import-obsidian|notion|chat|gbrain`.
+- 🤖 **30 MCP tools** so Claude, Cursor and your own agents share the exact same trusted, permission-aware memory.
 
 *New since the last release — see [What's new](#whats-new-2026-06) below.*
 
@@ -59,12 +60,23 @@ shown as a gap, never papered over.
 
 ## What's new (2026-06)
 
+- **Bring your existing notes.** `vitrus import-obsidian` (vault + `[[wikilinks]]` → typed edges),
+  `vitrus import-notion` (Notion markdown export), `vitrus import-chat` (ChatGPT/Claude
+  `conversations.json`), `vitrus import-gbrain` (migrate from GBrain) — all map into the same glass-box brain.
+- **8 one-token connectors.** Stripe · HubSpot · Salesforce · Asana · Microsoft Teams · Dropbox · Figma ·
+  Zoom — preset REST connectors: pick one, paste a token, it syncs. No bespoke code (built on the generic REST engine).
+- **Self-maintaining dream loop.** Nightly `vitrus dream` now also runs **citation-fix** (suggest a sourced
+  match for every uncited node) and a **contradiction digest** (open contradictions + which side is newer);
+  `vitrus brief` prints a deterministic morning briefing (attention + gaps + conflicts + fixable-uncited).
+- **Schema packs.** `vitrus schema lint` checks your taxonomy deterministically (unknown node/edge types,
+  edge from→to violations against the `vitrus-base` pack); `vitrus schema explain <type>` documents any
+  type and the edges it participates in. (MCP `schema_lint` / `schema_explain_type`.)
 - **Agent-native API hub.** Import an OpenAPI spec (`vitrus api import <spec>`), retrieve the right endpoint for a task (`vitrus api search`), and **verify a call deterministically before running it** (`vitrus api verify` → valid / missing_args / wrong_type / unknown_args / **unknown_endpoint** / deprecated) — the anti-hallucination gate. `vitrus api call` verifies, then executes. Also `vitrus ingest rest --config <c.json>` to pull any REST response into the brain. Visual API-integration drawer in the dashboard.
 - **Day-one onboarding.** `vitrus onboard "<role>"` builds a sourced, pedagogically-ordered learning path from the brain (who to ask + what's not documented yet); `vitrus quiz "<topic>"` generates recall questions graded deterministically by `verify`.
 - **`--explain` ranking attribution.** `vitrus search "<q>" --explain` prints each hit's score factors: vector/bm25/entity ranks + tier/cosine and the new **graph-adjacency / cross-source** boosts.
 - **Graph-signal ranking.** A deterministic, ACL-safe re-scoring after hybrid search: results connected to other top hits, or corroborated across sources, rise.
 - **Native Voyage + ZeroEntropy embedders** (Matryoshka-fit to the frozen `vector(1536)` schema — no migration).
-- **MCP surface 13 → 27 tools** (`entities`, `graph_query`, `get_node`, `chunks`, `attention`, `conflicts`, `api_search`/`api_verify`/`api_call`, `onboarding_path`, `quiz`, …; content tools are ACL fail-closed).
+- **MCP surface 13 → 30 tools** (`entities`, `graph_query`, `get_node`, `chunks`, `attention`, `conflicts`, `api_search`/`api_verify`/`api_call`, `onboarding_path`, `quiz`, `schema_lint`/`schema_explain_type`, `briefing`, …; content tools are ACL fail-closed).
 - **One-command capture.** `vitrus capture "<note>"` (arg/file/stdin) + a watched inbox folder (`vitrus ingest inbox <dir>`) for mobile capture.
 - **12 prebuilt skills.** `vitrus skills list|install` — a validated SKILL.md library that teaches agents how to use Vitrus.
 
@@ -125,7 +137,11 @@ tool, so agents can fact-check **themselves** before acting.
 Markdown is canonical — anything that becomes Markdown becomes knowledge:
 
 ```bash
-vitrus import ./brain          # a folder of .md files (+ optional .edges.json sidecars)
+vitrus import ./brain                   # a folder of .md files (+ optional .edges.json sidecars)
+vitrus import-obsidian ./vault          # an Obsidian vault ([[wikilinks]] → typed edges)
+vitrus import-notion ./export           # a Notion markdown export
+vitrus import-chat conversations.json   # a ChatGPT or Claude export
+vitrus import-gbrain ./gbrain           # migrate from GBrain
 ```
 
 The connector framework is in the core (Apache-2.0): one interface (`fetch()` → records with **content +
@@ -137,9 +153,10 @@ styles — REST-Link · GET-cursor · POST-cursor · GraphQL · offset · pageTo
 Notion · Linear · Jira · Drive · Gmail**. Incremental sync (`--since`, prune-safe), **webhook → live
 delta** (GitHub direct; Slack triggers a re-sync), and a **durable, crash-recovery sync queue** with a
 cron scheduler. Plus offline adapters: **Email** (participants become the ACL) · **Calendar** · a
-generic **Docs** adapter · an **MCP-source bridge** (any MCP server becomes a source). Everything
-funnels into **one brain**, so the same `alice` mentioned in Slack and authoring a PR fuses into a
-single graph node.
+generic **Docs** adapter · an **MCP-source bridge** (any MCP server becomes a source). And **eight
+one-token presets** on the generic REST engine — **Stripe · HubSpot · Salesforce · Asana · Teams ·
+Dropbox · Figma · Zoom** — pick one, paste a token, it syncs (no bespoke code). Everything funnels
+into **one brain**, so the same `alice` mentioned in Slack and authoring a PR fuses into a single graph node.
 
 ```bash
 GITHUB_TOKEN=… vitrus ingest github --live --repo owner/name              # pull (incremental with --since)
@@ -152,8 +169,9 @@ vitrus ingest slack --live --channel C0… --queue                          # en
   (conflicting edges), *stale* (superseded), *single-point* (bus-factor risk), *uncited* (event with no
   source). Derived from graph structure and explicit text signals only.
 - **Proactive attention** — `vitrus watch` makes gap analysis *temporal*: *stale knowledge*, *unresolved
-  incidents* and *aging gaps* surfaced **without being asked**. Deterministic, no LLM; schedule it (with
-  nightly `vitrus dream` consolidation) for a standing radar over your memory.
+  incidents* and *aging gaps* surfaced **without being asked**. Deterministic, no LLM. Nightly
+  `vitrus dream` consolidates (dedup, salience, **citation-fix** for uncited nodes, **contradiction
+  digest**) and `vitrus brief` prints a morning briefing — a standing, self-maintaining radar over your memory.
 - **Ops-map** — `vitrus ops` (MCP `ops_report`) reads the company as a system and flags operational
   inefficiencies: *unowned* services, *bus-factor* (single-person) risk, *bottlenecks* (overloaded hubs),
   *broken handoffs* (depending on superseded ground), and *redundant tools* (embedding-similar services).
@@ -168,6 +186,9 @@ vitrus ingest slack --live --channel C0… --queue                          # en
 - **Self-linking graph** — `[[type::slug]]` typed edges, extracted without an LLM; **bi-temporal** —
   `vitrus dashboard --graph --asof <ISO>` (and `getConnections`/`graphSnapshot`) answer *"what did we
   believe in March?"* (time-travel on the edge graph; correct from real `created_at`/`expired_at`).
+- **Schema packs** — a loadable taxonomy (`vitrus-base`): `vitrus schema lint` flags nodes/edges that
+  violate the type model (unknown types, illegal edge endpoints); `vitrus schema explain <type>` documents
+  a type and the edges it can participate in. Keeps a large brain's taxonomy honest.
 - **Hybrid retrieval** — vector + BM25 + entity match, RRF-fused; optional reranker.
 - **Provenance everywhere** — every claim traces to node → chunk → source URI.
 - **ACL, fail-closed** — enforced at the index layer; unauthorized content never appears in results.
