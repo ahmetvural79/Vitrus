@@ -19,21 +19,24 @@ export type Tier = "working" | "derived" | "durable";
  * Şirket beyni düğüm taksonomisi. Kişisel beyin tiplerini (concept/note/...)
  * korur, üzerine kurumsal tipleri (team/service/decision/incident/policy) ekler.
  */
-export type NodeType =
-  | "person"
-  | "team"
-  | "service"
-  | "decision"
-  | "incident"
-  | "policy"
-  | "company"
-  | "concept"
-  | "source"
-  | "note"
-  | "meeting"
-  | "document"
-  | "session" // ajan oturum transcript'i (B1 — "repo hafıza değildir")
-  | "api_endpoint"; // M1 Faz B — agent-native API kartı (Gorilla deseni: retrievable + verify edilebilir endpoint)
+// Runtime liste (M3.7 schema pack/lint bunu KAYNAK alır) — union birebir aynı kalır.
+export const NODE_TYPES = [
+  "person",
+  "team",
+  "service",
+  "decision",
+  "incident",
+  "policy",
+  "company",
+  "concept",
+  "source",
+  "note",
+  "meeting",
+  "document",
+  "session", // ajan oturum transcript'i (B1 — "repo hafıza değildir")
+  "api_endpoint", // M1 Faz B — agent-native API kartı (Gorilla deseni: retrievable + verify edilebilir endpoint)
+] as const;
+export type NodeType = (typeof NODE_TYPES)[number];
 
 /** İki çalışma modu. Kurumsal MVP "business" ile başlar (nesne-ağırlıklı). */
 export type Mode = "business" | "research";
@@ -42,22 +45,24 @@ export type Mode = "business" | "research";
  * Tipli kenar türleri. Öz-bağlanan grafın omurgası.
  * `supersedes`/`contradicts` deterministik çelişki tespitini besler (Faz 1).
  */
-export type EdgeType =
-  | "works_at"
-  | "member_of"
-  | "reports_to" // org hiyerarşisi (person → yönetici)
-  | "owns"
-  | "depends_on"
-  | "attended"
-  | "mentions"
-  | "extends"
-  | "contradicts"
-  | "supersedes"
-  | "decided_by"
-  | "caused_by"
-  | "resolved_by"
-  | "advises"
-  | "founded";
+export const EDGE_TYPES = [
+  "works_at",
+  "member_of",
+  "reports_to", // org hiyerarşisi (person → yönetici)
+  "owns",
+  "depends_on",
+  "attended",
+  "mentions",
+  "extends",
+  "contradicts",
+  "supersedes",
+  "decided_by",
+  "caused_by",
+  "resolved_by",
+  "advises",
+  "founded",
+] as const;
+export type EdgeType = (typeof EDGE_TYPES)[number];
 
 // ---------------------------------------------------------------------------
 // İzin metadata (ACL) — Faz 0'da TOPLANIR, Faz 1'de UYGULANIR (T16).

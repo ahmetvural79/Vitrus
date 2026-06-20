@@ -217,6 +217,37 @@ async function main() {
       break;
     }
 
+    case "schema": {
+      // M3.7 — şema paketi (vitrus-base): tip taksonomisini denetle/açıkla.
+      // usage: vitrus schema [lint] | vitrus schema explain <type>
+      const { VITRUS_BASE_PACK, schemaLint, explainType } = await import("../schema/index.js");
+      const sub = rest[0] ?? "lint";
+      if (sub === "explain") {
+        const ex = explainType(VITRUS_BASE_PACK, rest[1] ?? "");
+        if (!ex) { console.log(`unknown type: ${rest[1] ?? ""} (try a NodeType e.g. person, or EdgeType e.g. works_at)`); break; }
+        console.log(`${ex.kind === "node" ? "◆" : "↔"} ${ex.name} (${ex.kind}) — ${ex.description}`);
+        if (ex.kind === "node") {
+          if (ex.slugPattern || ex.tierHint) console.log(`  ${ex.slugPattern ?? ""}${ex.tierHint ? `  ·  tier: ${ex.tierHint}` : ""}`.trim());
+          if (ex.edgesAsFrom?.length) console.log("  as source: " + ex.edgesAsFrom.map((e) => `${e.type}→${e.to.join("/")}`).join(", "));
+          if (ex.edgesAsTo?.length) console.log("  as target: " + ex.edgesAsTo.map((e) => `${e.from.join("/")}→${e.type}`).join(", "));
+        } else {
+          console.log(`  ${ex.from?.join("/")} → ${ex.to?.join("/")}`);
+          if (ex.inferredVerbs?.length) console.log("  verb hints: " + ex.inferredVerbs.join(", "));
+        }
+        break;
+      }
+      await engine.init();
+      const r = await schemaLint(engine, VITRUS_BASE_PACK);
+      if (r.findings.length === 0) {
+        console.log(`✓ Schema clean (${r.scannedNodes} nodes, ${r.scannedEdges} edges — ${r.pack}).`);
+      } else {
+        console.log(`⚠ ${r.findings.length} schema finding(s) (${r.pack}):`);
+        for (const f of r.findings) console.log(`  [${f.kind}] ${f.message}`);
+        if (r.truncated) console.log(`  (${r.truncated} nodes not scanned — raise the limit)`);
+      }
+      break;
+    }
+
     case "ops": {
       // Operasyonel verimsizlik haritası (deterministik): unowned/bus_factor/bottleneck/broken_handoff.
       const findings = await engine.findOps();

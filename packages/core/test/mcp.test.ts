@@ -20,15 +20,15 @@ function rlinks(content: unknown[]): any[] {
   return (content as any[]).filter((c) => c.type === "resource_link");
 }
 
-test("TOOL_DEFS: 27 tool, her birinde inputSchema + outputSchema", () => {
-  assert.equal(TOOL_DEFS.length, 27);
+test("TOOL_DEFS: 29 tool, her birinde inputSchema + outputSchema", () => {
+  assert.equal(TOOL_DEFS.length, 29);
   for (const t of TOOL_DEFS) {
     assert.ok(t.inputSchema && t.inputSchema.type === "object", `${t.name} inputSchema`);
     assert.ok(t.outputSchema && t.outputSchema.type === "object", `${t.name} outputSchema`);
   }
   assert.deepEqual(
     TOOL_DEFS.map((t) => t.name).sort(),
-    ["api_call", "api_describe", "api_search", "api_verify", "attention", "capture_session", "chunks", "conflicts", "entities", "forget", "gap_report", "get_node", "graph_query", "graph_snapshot", "improve", "onboarding_path", "ops_report", "provenance", "quiz", "record_decision", "remember", "resolve_conflict", "search", "skill_export", "supporting_chunks", "think", "verify"]
+    ["api_call", "api_describe", "api_search", "api_verify", "attention", "capture_session", "chunks", "conflicts", "entities", "forget", "gap_report", "get_node", "graph_query", "graph_snapshot", "improve", "onboarding_path", "ops_report", "provenance", "quiz", "record_decision", "remember", "resolve_conflict", "schema_explain_type", "schema_lint", "search", "skill_export", "supporting_chunks", "think", "verify"]
   );
 });
 

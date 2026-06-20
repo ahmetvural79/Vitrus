@@ -447,6 +447,20 @@ export const TOOL_DEFS: McpToolDef[] = [
     inputSchema: { type: "object", properties: { topic: { type: "string" }, count: { type: "integer", default: 5 } }, required: ["topic"] },
     outputSchema: { type: "object", properties: { questions: { type: "array", items: { type: "object" } } }, required: ["questions"] },
   },
+  {
+    name: "schema_lint",
+    title: "Şema denetimi",
+    description: "Beyni şema paketine (vitrus-base) karşı deterministik denetle: bilinmeyen node/edge tipi + kenar from→to ihlali. Taksonomi tutarlılığı (M3.7).",
+    inputSchema: { type: "object", properties: { limit: { type: "integer", minimum: 1, maximum: 2000, default: 1000 } } },
+    outputSchema: { type: "object", properties: { pack: { type: "string" }, findings: { type: "array", items: { type: "object" } }, scannedNodes: { type: "integer" }, scannedEdges: { type: "integer" }, truncated: { type: "integer" } }, required: ["pack", "findings"] },
+  },
+  {
+    name: "schema_explain_type",
+    title: "Tip açıkla",
+    description: "Bir node/edge tipini şema paketinden açıkla: anlam + (node için) katıldığı kenarlar / (edge için) izinli from→to. Ajanın doğru tip/kenar seçmesini sağlar (M3.7).",
+    inputSchema: { type: "object", properties: { type: { type: "string" } }, required: ["type"] },
+    outputSchema: { type: "object", properties: { name: { type: "string" }, kind: { type: "string" }, description: { type: "string" } }, required: ["name", "kind"] },
+  },
 ];
 
 /** Ajan-yazma için markdown KAYNAĞI (sahiplik): remember/forget/improve burayı günceller. */
@@ -960,6 +974,34 @@ export async function callTool(
       const { generateQuiz } = await import("../onboard/quiz.js");
       const questions = await generateQuiz(engine, String(args.topic ?? ""), { count: typeof args.count === "number" ? args.count : 5, principals });
       return { structuredContent: { questions }, content: [text(questions.map((q, i) => `${i + 1}. ${q.question}`).join("\n") || "(no questions)")] };
+    }
+
+    case "schema_lint": {
+      const { schemaLint, VITRUS_BASE_PACK } = await import("../schema/index.js");
+      const r = await schemaLint(engine, VITRUS_BASE_PACK, { limit: typeof args.limit === "number" ? args.limit : 1000 });
+      const summary =
+        r.findings.length === 0
+          ? `✓ Şema temiz (${r.scannedNodes} düğüm, ${r.scannedEdges} kenar — ${r.pack}).`
+          : `⚠ ${r.findings.length} şema bulgusu (${r.pack}):\n` +
+            r.findings.slice(0, 30).map((f) => `  - [${f.kind}] ${f.message}`).join("\n") +
+            (r.truncated ? `\n  (${r.truncated} düğüm limit nedeniyle taranmadı)` : "");
+      return { structuredContent: r, content: [text(summary)] };
+    }
+
+    case "schema_explain_type": {
+      const { explainType, VITRUS_BASE_PACK } = await import("../schema/index.js");
+      const ex = explainType(VITRUS_BASE_PACK, String(args.type ?? ""));
+      if (!ex) return { structuredContent: { error: "unknown_type" }, content: [text(`Bilinmeyen tip: '${args.type}' (${VITRUS_BASE_PACK.name})`)], isError: true };
+      const lines = [`${ex.kind === "node" ? "◆" : "↔"} ${ex.name} (${ex.kind}) — ${ex.description}`];
+      if (ex.kind === "node") {
+        if (ex.slugPattern || ex.tierHint) lines.push(`  ${ex.slugPattern ?? ""}${ex.tierHint ? `  ·  tier: ${ex.tierHint}` : ""}`.trim());
+        if (ex.edgesAsFrom?.length) lines.push("  kaynak olarak: " + ex.edgesAsFrom.map((e) => `${e.type}→${e.to.join("/")}`).join(", "));
+        if (ex.edgesAsTo?.length) lines.push("  hedef olarak: " + ex.edgesAsTo.map((e) => `${e.from.join("/")}→${e.type}`).join(", "));
+      } else {
+        lines.push(`  ${ex.from?.join("/")} → ${ex.to?.join("/")}`);
+        if (ex.inferredVerbs?.length) lines.push("  fiil ipuçları: " + ex.inferredVerbs.join(", "));
+      }
+      return { structuredContent: ex, content: [text(lines.join("\n"))] };
     }
 
     default:
