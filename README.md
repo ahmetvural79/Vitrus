@@ -18,6 +18,21 @@ all in **portable Markdown files you own**.
 
 ---
 
+## ✨ What you can do
+
+> **One brain — read by humans *and* agents. It cites every claim, and admits what it doesn't know.**
+
+- 🧠 **Ask your company in plain language** → a sourced answer plus an honest list of what isn't documented ([see it](#what-this-looks-like)).
+- 🔌 **Make any API agent-native (Gorilla pattern).** Import an OpenAPI spec, retrieve the right endpoint for a task, and **verify the call before it runs** — no hallucinated endpoints or arguments. `vitrus api import|search|verify|call`.
+- 🎓 **Onboard a new hire (or agent) on day one.** A sourced, pedagogically-ordered learning path with *who to ask* and *what's still undocumented*, plus quizzes graded against the brain. `vitrus onboard|quiz`.
+- 🔎 **Trust the ranking.** `--explain` prints every score factor; graph-signal ranking promotes results that are connected to, or corroborated across, other sources.
+- ⚡ **Capture without friction.** One-command notes, ingest from any REST endpoint, or drop files in a watched inbox folder. `vitrus capture` · `vitrus ingest rest|inbox`.
+- 🤖 **27 MCP tools** so Claude, Cursor and your own agents share the exact same trusted, permission-aware memory.
+
+*New since the last release — see [What's new](#whats-new-2026-06) below.*
+
+---
+
 ## What this looks like
 
 ```text
