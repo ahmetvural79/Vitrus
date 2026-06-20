@@ -23,7 +23,7 @@ all in **portable Markdown files you own**.
 > **One brain — read by humans *and* agents. It cites every claim, and admits what it doesn't know.**
 
 - 🧠 **Ask your company in plain language** → a sourced answer plus an honest list of what isn't documented ([see it](#what-this-looks-like)).
-- 🔌 **Make any API agent-native (Gorilla pattern).** Import an OpenAPI spec, retrieve the right endpoint for a task, and **verify the call before it runs** — no hallucinated endpoints or arguments. `vitrus api import|search|verify|call`.
+- 🔌 **Make any API agent-native.** Import an OpenAPI spec, retrieve the right endpoint for a task, and **verify the call before it runs** — no hallucinated endpoints or arguments. `vitrus api import|search|verify|call`.
 - 🎓 **Onboard a new hire (or agent) on day one.** A sourced, pedagogically-ordered learning path with *who to ask* and *what's still undocumented*, plus quizzes graded against the brain. `vitrus onboard|quiz`.
 - 🔎 **Trust the ranking.** `--explain` prints every score factor; graph-signal ranking promotes results that are connected to, or corroborated across, other sources.
 - ⚡ **Capture without friction.** One-command notes, ingest from any REST endpoint, or drop files in a watched inbox folder. `vitrus capture` · `vitrus ingest rest|inbox`.
@@ -59,7 +59,7 @@ shown as a gap, never papered over.
 
 ## What's new (2026-06)
 
-- **Agent-native API hub (Gorilla pattern).** Import an OpenAPI spec (`vitrus api import <spec>`), retrieve the right endpoint for a task (`vitrus api search`), and **verify a call deterministically before running it** (`vitrus api verify` → valid / missing_args / wrong_type / unknown_args / **unknown_endpoint** / deprecated) — the anti-hallucination gate. `vitrus api call` verifies, then executes. Also `vitrus ingest rest --config <c.json>` to pull any REST response into the brain. Visual API-integration drawer in the dashboard.
+- **Agent-native API hub.** Import an OpenAPI spec (`vitrus api import <spec>`), retrieve the right endpoint for a task (`vitrus api search`), and **verify a call deterministically before running it** (`vitrus api verify` → valid / missing_args / wrong_type / unknown_args / **unknown_endpoint** / deprecated) — the anti-hallucination gate. `vitrus api call` verifies, then executes. Also `vitrus ingest rest --config <c.json>` to pull any REST response into the brain. Visual API-integration drawer in the dashboard.
 - **Day-one onboarding.** `vitrus onboard "<role>"` builds a sourced, pedagogically-ordered learning path from the brain (who to ask + what's not documented yet); `vitrus quiz "<topic>"` generates recall questions graded deterministically by `verify`.
 - **`--explain` ranking attribution.** `vitrus search "<q>" --explain` prints each hit's score factors: vector/bm25/entity ranks + tier/cosine and the new **graph-adjacency / cross-source** boosts.
 - **Graph-signal ranking.** A deterministic, ACL-safe re-scoring after hybrid search: results connected to other top hits, or corroborated across sources, rise.
