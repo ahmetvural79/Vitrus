@@ -10,4 +10,5 @@ export { EmailConnector } from "./email.js";
 export { CalendarConnector } from "./calendar.js";
 export { ChangeQueue, parseWebhook } from "./webhook.js";
 export { RestConnector, type RestConfig, type RestFetch } from "./rest.js"; // M1 Faz A: generic REST
+export { CONNECTOR_PRESETS, presetToConfig, type ConnectorPreset } from "./presets.js"; // 8 REST preset (Stripe/HubSpot/…)
 export { InboxConnector, captureRecord, type CaptureOpts } from "./inbox.js"; // M3.5: capture/inbox

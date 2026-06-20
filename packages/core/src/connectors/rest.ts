@@ -108,8 +108,16 @@ export class RestConnector implements Connector {
 
   private toRecord(item: unknown, i: number): SourceRecord {
     const obj = item && typeof item === "object" ? (item as Record<string, unknown>) : { value: item };
-    const pick = (field?: string): string | undefined =>
-      field && obj[field] != null ? String(obj[field]) : undefined;
+    // Alan seçici: nokta-yolu destekler (ör. "properties.email" → obj.properties.email — HubSpot/Teams).
+    const pick = (field?: string): string | undefined => {
+      if (!field) return undefined;
+      let v: unknown = obj;
+      for (const k of field.split(".")) {
+        if (v == null || typeof v !== "object") return undefined;
+        v = (v as Record<string, unknown>)[k];
+      }
+      return v == null ? undefined : String(v);
+    };
     const id = pick(this.config.idField) ?? sha8(JSON.stringify(item) + i);
     const content = pick(this.config.contentField) ?? JSON.stringify(obj, null, 2);
     return {

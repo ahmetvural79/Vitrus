@@ -12,8 +12,8 @@ export type VerifyStatus = "grounded" | "stale" | "contradicted" | "unsupported"
 export interface VerifyResult {
   claim: string;
   status: VerifyStatus;
-  support: { slug: string; score: number }[]; // iddiayı lexical olarak destekleyen kaynaklar
-  conflicts: { slug: string; kind: "contradiction" | "stale" }[];
+  support: { slug: string; title: string; score: number }[]; // iddiayı lexical olarak destekleyen kaynaklar (title = okunur etiket)
+  conflicts: { slug: string; title: string; kind: "contradiction" | "stale" }[];
   confidence: number; // 0..1
 }
 
@@ -42,7 +42,7 @@ export async function verifyClaim(
       const ht = tokens(h.node.content);
       let inter = 0;
       for (const t of ct) if (ht.has(t)) inter++;
-      return { slug: h.node.slug, id: h.node.id, score: ct.size ? Math.round((inter / ct.size) * 1000) / 1000 : 0 };
+      return { slug: h.node.slug, id: h.node.id, title: h.node.title, score: ct.size ? Math.round((inter / ct.size) * 1000) / 1000 : 0 };
     })
     .filter((x) => x.score >= threshold)
     .sort((a, b) => b.score - a.score || a.slug.localeCompare(b.slug));
@@ -54,8 +54,8 @@ export async function verifyClaim(
 
   const conflicts: VerifyResult["conflicts"] = [];
   for (const s of support) {
-    if (contradictionIds.has(s.id)) conflicts.push({ slug: s.slug, kind: "contradiction" });
-    else if (staleIds.has(s.id)) conflicts.push({ slug: s.slug, kind: "stale" });
+    if (contradictionIds.has(s.id)) conflicts.push({ slug: s.slug, title: s.title, kind: "contradiction" });
+    else if (staleIds.has(s.id)) conflicts.push({ slug: s.slug, title: s.title, kind: "stale" });
   }
 
   let status: VerifyStatus;
@@ -67,7 +67,7 @@ export async function verifyClaim(
   const top = support[0]?.score ?? 0;
   const confidence = status === "unsupported" ? 0 : Math.round(top * (conflicts.length ? 0.5 : 1) * 1000) / 1000;
 
-  return { claim, status, support: support.map(({ slug, score }) => ({ slug, score })), conflicts, confidence };
+  return { claim, status, support: support.map(({ slug, title, score }) => ({ slug, title, score })), conflicts, confidence };
 }
 
 export function renderVerify(r: VerifyResult): string {
