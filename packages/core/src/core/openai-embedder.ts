@@ -16,6 +16,8 @@ import { normalizeEnv } from "./env.js";
 import { HashingEmbedder } from "./hashing-embedder.js";
 import { GeminiEmbedder } from "./providers/gemini-embedder.js";
 import { CohereEmbedder } from "./providers/cohere-embedder.js";
+import { VoyageEmbedder } from "./providers/voyage-embedder.js";
+import { ZeroEntropyEmbedder } from "./providers/zeroentropy-embedder.js";
 
 /** Minimal fetch shape we depend on — keeps DOM/Node lib typing out of the contract. */
 export type FetchLike = (
@@ -79,7 +81,7 @@ export class OpenAIEmbedder implements Embedder {
 /**
  * Production-default embedder factory with multi-provider dispatch.
  *
- * `VITRUS_EMBED_PROVIDER` ∈ openai | gemini | cohere | hashing selects the provider;
+ * `VITRUS_EMBED_PROVIDER` ∈ openai | gemini | cohere | voyage | zeroentropy | hashing selects the provider;
  * all default to the frozen vector(1536) dim (no migration). When unset, backward-compat:
  * OPENAI_API_KEY → OpenAIEmbedder, else the offline-deterministic HashingEmbedder (so dev,
  * eval and leak-test stay reproducible and air-gapped). `VITRUS_EMBED_DIM` overrides the
@@ -104,6 +106,16 @@ export function embedderFromEnv(rawEnv: Record<string, string | undefined> = pro
       if (!key) throw new Error("embedderFromEnv: provider=cohere requires COHERE_API_KEY");
       return new CohereEmbedder({ apiKey: key, model, dim, baseUrl: env.COHERE_BASE_URL, inputType: env.VITRUS_COHERE_INPUT_TYPE });
     }
+    case "voyage": {
+      const key = env.VOYAGE_API_KEY;
+      if (!key) throw new Error("embedderFromEnv: provider=voyage requires VOYAGE_API_KEY");
+      return new VoyageEmbedder({ apiKey: key, model, dim, baseUrl: env.VOYAGE_BASE_URL, inputType: env.VITRUS_VOYAGE_INPUT_TYPE });
+    }
+    case "zeroentropy": {
+      const key = env.ZEROENTROPY_API_KEY;
+      if (!key) throw new Error("embedderFromEnv: provider=zeroentropy requires ZEROENTROPY_API_KEY");
+      return new ZeroEntropyEmbedder({ apiKey: key, model, dim, baseUrl: env.ZEROENTROPY_BASE_URL, inputType: env.VITRUS_ZE_INPUT_TYPE, latency: env.VITRUS_ZE_LATENCY });
+    }
     case "openai":
     case "": {
       // Default path (provider unset): OPENAI_API_KEY → OpenAI, else offline hashing.
@@ -115,6 +127,6 @@ export function embedderFromEnv(rawEnv: Record<string, string | undefined> = pro
       return new OpenAIEmbedder({ apiKey: key, model, dim, baseUrl: env.OPENAI_BASE_URL });
     }
     default:
-      throw new Error(`embedderFromEnv: unknown VITRUS_EMBED_PROVIDER="${provider}" (openai|gemini|cohere|hashing)`);
+      throw new Error(`embedderFromEnv: unknown VITRUS_EMBED_PROVIDER="${provider}" (openai|gemini|cohere|voyage|zeroentropy|hashing)`);
   }
 }

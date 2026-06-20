@@ -14,6 +14,7 @@ import { rerankerFromEnv } from "../core/reranker.js";
 import { workOff, type Job } from "../core/job-queue.js";
 import { engineFromEnv } from "../core/postgres-engine.js";
 import { buildSurface, renderSurfaceText, renderSurfaceHtml } from "../surface/surface.js";
+import { formatExplain } from "../search/explain.js";
 import { buildSkillPack, skillPackToBundle } from "../skill/skill-export.js";
 import { validateSkillFile, skillFileToMarkdown } from "../skill/skill-file.js";
 import { runSkillEval, renderSkillEvalReport, parseSkillEval } from "../skill/skill-eval.js";
@@ -27,6 +28,9 @@ import { DocsConnector } from "../connectors/docs.js";
 import { SessionConnector } from "../connectors/sessions.js";
 import { EmailConnector } from "../connectors/email.js";
 import { CalendarConnector } from "../connectors/calendar.js";
+import { InboxConnector, captureRecord } from "../connectors/inbox.js";
+import { RestConnector } from "../connectors/rest.js";
+import { recordToNode } from "../connectors/types.js";
 import { ChangeQueue, parseWebhook } from "../connectors/webhook.js";
 import { resolveConfig, renderConfig } from "../core/config.js";
 import { buildDashboard, renderDashboardHtml } from "../api/dashboard.js";
@@ -42,6 +46,14 @@ const ENV = normalizeEnv(process.env);
 const embedder = embedderFromEnv();
 // Kalıcı dev veri dizini — CLI çağrıları arasında türev indeks korunur.
 const DATA_DIR = ENV.VITRUS_DATA ?? "./.vitrus";
+
+/** stdin'i tümüyle oku (pipe). TTY ise boş döner (interaktif → asılma yok). */
+async function readStdin(): Promise<string> {
+  if (process.stdin.isTTY) return "";
+  const chunks: Buffer[] = [];
+  for await (const c of process.stdin) chunks.push(Buffer.from(c));
+  return Buffer.concat(chunks).toString("utf8");
+}
 
 async function main() {
   const [cmd, ...rest] = process.argv.slice(2);
@@ -70,6 +82,9 @@ async function main() {
   if (applyFlag) rest.splice(rest.indexOf("--apply"), 1);
   const graphFlag = rest.includes("--graph");
   if (graphFlag) rest.splice(rest.indexOf("--graph"), 1);
+  // --explain: search sonuçlarının altına skor faktör dökümünü bas (atıf/debug).
+  const explainFlag = rest.includes("--explain");
+  if (explainFlag) rest.splice(rest.indexOf("--explain"), 1);
 
   let httpPort: number | null = null;
   const httpFlagIdx = rest.indexOf("--http");
@@ -161,6 +176,7 @@ async function main() {
         const rr = h.boosts?.rerank !== undefined ? ` rr=${h.boosts.rerank}` : "";
         const ranks = `v=${h.vectorRank ?? "-"} b=${h.bm25Rank ?? "-"} e=${h.entityRank ?? "-"}`;
         console.log(`  ${h.score.toFixed(4)}  ${h.node.slug}  [${ranks}${cos}${rr}]`);
+        if (explainFlag) console.log(formatExplain(h));
       }
       if (hits.length === 0) console.log("(no results — first run: vitrus import <dir>)");
       break;
@@ -255,6 +271,42 @@ async function main() {
       }
       console.log(`🔔 Needs attention (${items.length}):`);
       for (const it of items) console.log(`  [${it.severity}] ${it.kind} · ${it.message}`);
+      break;
+    }
+
+    case "skills": {
+      // Prebuilt skill kütüphanesi (M3.4): ajana Vitrus'u kullanmayı öğreten curated SKILL.md'ler.
+      // usage: vitrus skills [list | show <name> | install [--out <dir>]]
+      const { PREBUILT_SKILLS, findPrebuiltSkill } = await import("../skill/prebuilt.js");
+      const { skillToBundle } = await import("../skill/skill-export.js");
+      const { skillFileToMarkdown, validateSkillFile } = await import("../skill/skill-file.js");
+      const sub = rest[0] ?? "list";
+      if (sub === "show") {
+        const s = findPrebuiltSkill(rest[1] ?? "");
+        if (!s) { console.log(`unknown skill: ${rest[1] ?? ""} (try: vitrus skills list)`); break; }
+        console.log(skillFileToMarkdown(s));
+        break;
+      }
+      if (sub === "install") {
+        const dir = outDir === "./brain/derived/skills" ? "./.claude/skills" : outDir; // --out verilmediyse Claude Code dizini
+        let wrote = 0;
+        for (const s of PREBUILT_SKILLS) {
+          const v = validateSkillFile(s);
+          if (!v.ok) { console.log(`✗ ${s.name}: ${v.errors.join("; ")}`); continue; }
+          for (const f of skillToBundle(s).files) {
+            const p = join(dir, f.path); // f.path zaten "<name>/SKILL.md" — çift-iç-içe yapma
+            mkdirSync(dirname(p), { recursive: true });
+            writeFileSync(p, f.content);
+          }
+          wrote++;
+        }
+        console.log(`✓ installed ${wrote}/${PREBUILT_SKILLS.length} prebuilt skills → ${dir}`);
+        break;
+      }
+      console.log(`Prebuilt skills (${PREBUILT_SKILLS.length}):`);
+      for (const s of PREBUILT_SKILLS) console.log(`  ${s.name.padEnd(22)} ${s.description.slice(0, 76)}`);
+      console.log("\n  vitrus skills show <name>            print one SKILL.md");
+      console.log("  vitrus skills install [--out <dir>]  write bundles (default ./.claude/skills)");
       break;
     }
 
@@ -377,6 +429,23 @@ async function main() {
       await engine.init();
       const [kind, fixture] = rest;
 
+      // Generic REST connector (M1 Faz A — Image #1'in motoru): vitrus ingest rest --config <config.json>
+      if (kind === "rest") {
+        const cfgIdx = rest.indexOf("--config");
+        const cfgPath = cfgIdx >= 0 ? rest[cfgIdx + 1] : undefined;
+        if (!cfgPath) {
+          console.log("usage: vitrus ingest rest --config <config.json> [--as <owner>] [--scope <x>]");
+          break;
+        }
+        const config = JSON.parse(readFileSync(cfgPath, "utf8"));
+        const conn = new RestConnector(config, { now: new Date().toISOString(), owner: asUser ?? undefined, scope: scopeArg ?? undefined });
+        const r = await ingest(engine, conn);
+        await engine.refreshEntities();
+        await engine.refreshSalience();
+        console.log(`${r.connector}: ${r.upserted} records imported, ${r.pruned} pruned.`);
+        break;
+      }
+
       if (rest.includes("--live")) {
         const takeOne = (flag: string): string | undefined => {
           const i = rest.indexOf(flag);
@@ -461,11 +530,13 @@ async function main() {
                 ? new EmailConnector(fixture)
                 : kind === "calendar" && fixture
                   ? new CalendarConnector(fixture)
-                  : DOCS.has(kind) && fixture
-                    ? new DocsConnector(kind, fixture)
-                    : null;
+                  : kind === "inbox" && fixture
+                    ? new InboxConnector(fixture, { owner: asUser ?? undefined, scope: scopeArg ?? undefined })
+                    : DOCS.has(kind) && fixture
+                      ? new DocsConnector(kind, fixture)
+                      : null;
       if (!connector) {
-        console.log("usage: vitrus ingest <slack|github|sessions|email|calendar|notion|linear|jira|drive> <fixture.json|dir> [--as <owner> --scope <x>]");
+        console.log("usage: vitrus ingest <slack|github|sessions|email|calendar|inbox|notion|linear|jira|drive> <fixture.json|dir> | ingest rest --config <c.json>  [--as <owner> --scope <x>]");
         break;
       }
       const r = await ingest(engine, connector);
@@ -642,6 +713,38 @@ async function main() {
       return;
     }
 
+    case "capture": {
+      // Tek-komut yakalama (gbrain capture paritesi): arg / --file <path> / stdin → working/inbox/<date>-<hash> notu.
+      // usage: vitrus capture "<text>" | vitrus capture --file <path> | echo ... | vitrus capture  [--title <t>] [--as <owner>] [--scope <x>]
+      await engine.init();
+      let textInput = "";
+      const fileIdx = rest.indexOf("--file");
+      if (fileIdx >= 0 && rest[fileIdx + 1]) {
+        textInput = readFileSync(rest[fileIdx + 1], "utf8");
+        rest.splice(fileIdx, 2);
+      }
+      const titleIdx = rest.indexOf("--title");
+      const titleArg = titleIdx >= 0 && rest[titleIdx + 1] ? rest[titleIdx + 1] : undefined;
+      if (titleIdx >= 0) rest.splice(titleIdx, titleArg ? 2 : 1);
+      if (!textInput) {
+        const positional = rest.filter((a) => !a.startsWith("--")).join(" ").trim();
+        textInput = positional || (await readStdin());
+      }
+      if (!textInput.trim()) {
+        console.log('usage: vitrus capture "<text>" | --file <path> | (stdin)  [--title <t>] [--as <owner>] [--scope <x>]');
+        break;
+      }
+      const now = new Date().toISOString();
+      const rec = captureRecord(textInput, { now, title: titleArg, owner: asUser ?? undefined, scope: scopeArg ?? undefined });
+      const node = recordToNode("capture", rec);
+      const brainDir = ENV.VITRUS_BRAIN;
+      if (brainDir) new MarkdownStore(brainDir).writeNode(node); // markdown KAYNAĞA persist (reindex'te kalır)
+      await engine.putNode(node);
+      await engine.refreshEntities();
+      console.log(`✓ captured: ${rec.slug}${brainDir ? ` · writes → ${brainDir}` : " · index-only (set VITRUS_BRAIN to persist)"}`);
+      break;
+    }
+
     case "decide": {
       // Karardan-sonra-yaz döngüsünün terminal/CI yüzeyi (record_decision MCP aracıyla aynı motor).
       // usage: vitrus decide "<decision>" [--why <rationale>] [--supersedes <slug>] [--contradicts <slug>] [--source <slug|url>]... [--title <t>] [--as <user>]
@@ -796,7 +899,7 @@ async function main() {
 
     default:
       console.log(
-        "usage: vitrus <init | import <dir> | ingest <slack|github|sessions|email|calendar|notion|linear|jira|drive> <fixture> | ingest <github --live --repo <o/n> | slack --live --channel <Cxxxx> | notion|linear|drive|gmail --live | jira --live --site <co> --email <e>> [--token <t>] [--since <iso>] [--queue] | webhook <github|slack|connector> <event> | sync <dir> | search <q> [--as <user>] [--scope <x>] [--postgres <url>] | think <q> [--html f|--json] [--scope <x>] | verify <claim> [--as <user>] | decide \"<decision>\" [--why <r>] [--supersedes <slug>] [--contradicts <slug>] [--source <s>]... [--as <user>] | gaps | ops | conflicts | resolve <keep> <supersede> | entities | dedup | dream | purge [days] | audit [<slug>] | dashboard [--html f] [--graph [--asof <ISO>]] | chunks <slug> [q] | agent run <q> | agent work [--max N] | jobs | bench gapeval [--out <f> --negative-control --determinism] | doctor | config | version | skill <topic> [--publish --out <dir> | --eval] | skill-eval <name> [--out <dir>] | skill-curate [--out <dir>] | skill-optimize <name> [--apply --out <dir>] | hooks install [--agent claude|cursor|codex] [--dir <path>] | mcp [--http <port>]>"
+        "usage: vitrus <init | import <dir> | capture \"<text>\" [--file f|--title t|--as u] | ingest <slack|github|sessions|email|calendar|inbox|notion|linear|jira|drive> <fixture> | ingest rest --config <c.json> | ingest <github --live --repo <o/n> | slack --live --channel <Cxxxx> | notion|linear|drive|gmail --live | jira --live --site <co> --email <e>> [--token <t>] [--since <iso>] [--queue] | webhook <github|slack|connector> <event> | sync <dir> | search <q> [--as <user>] [--scope <x>] [--explain] [--postgres <url>] | think <q> [--html f|--json] [--scope <x>] | verify <claim> [--as <user>] | decide \"<decision>\" [--why <r>] [--supersedes <slug>] [--contradicts <slug>] [--source <s>]... [--as <user>] | gaps | ops | conflicts | resolve <keep> <supersede> | entities | dedup | dream | purge [days] | audit [<slug>] | dashboard [--html f] [--graph [--asof <ISO>]] | chunks <slug> [q] | agent run <q> | agent work [--max N] | jobs | bench gapeval [--out <f> --negative-control --determinism] | doctor | config | version | skill <topic> [--publish --out <dir> | --eval] | skills [list|show <name>|install [--out d]] | skill-eval <name> [--out <dir>] | skill-curate [--out <dir>] | skill-optimize <name> [--apply --out <dir>] | hooks install [--agent claude|cursor|codex] [--dir <path>] | mcp [--http <port>]>"
       );
   }
 

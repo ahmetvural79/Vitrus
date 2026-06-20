@@ -9,3 +9,5 @@ export { SessionConnector } from "./sessions.js";
 export { EmailConnector } from "./email.js";
 export { CalendarConnector } from "./calendar.js";
 export { ChangeQueue, parseWebhook } from "./webhook.js";
+export { RestConnector, type RestConfig, type RestFetch } from "./rest.js"; // M1 Faz A: generic REST
+export { InboxConnector, captureRecord, type CaptureOpts } from "./inbox.js"; // M3.5: capture/inbox

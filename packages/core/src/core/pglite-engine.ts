@@ -28,6 +28,7 @@ import type {
 import { extractEdges, slugToId } from "../sync/wikilinks.js";
 import { chunkText, meanPool } from "../sync/chunk.js";
 import { tierBoost } from "../search/hybrid.js";
+import { applyGraphSignals } from "../search/graph-signals.js";
 import { RERANK_POOL_FACTOR, type Reranker } from "./reranker.js";
 import { JobQueue } from "./job-queue.js";
 import { PgliteDriver, type SqlDriver } from "./sql-driver.js";
@@ -446,6 +447,20 @@ export class PgliteEngine implements BrainEngine {
         out.push({ ...h, score: r.score, boosts: { ...h.boosts, rerank: Number(r.score.toFixed(4)) } });
       }
       ranked = out;
+    }
+
+    // Graf-sinyali yeniden-skorlama (M3.1): havuz-içi canlı kenarlardan adjacency + cross-source teyidi.
+    // ACL: yalnız döndürülen (yetkili) adaylar arası kenarlar kullanılır → sızıntı yok. Varsayılan açık
+    // (graphSignals=false ile ham RRF). Havuz=limit olduğundan döndürülen KÜME değişmez, yalnız sıra (eval-güvenli).
+    if (opts.graphSignals !== false && ranked.length > 1) {
+      const ids = ranked.map((h) => h.node.id);
+      const { rows: edgeRows } = await this.db.query<{ from_node: string; to_node: string }>(
+        `SELECT from_node, to_node FROM edges
+         WHERE from_node = ANY($1::text[]) AND to_node = ANY($1::text[]) AND expired_at IS NULL
+           AND ($2::text IS NULL OR org_id IS NOT DISTINCT FROM $2)`,
+        [ids, this.org ?? null]
+      );
+      ranked = applyGraphSignals(ranked, edgeRows.map((e) => ({ from: e.from_node, to: e.to_node })));
     }
 
     // score desc; eşitlikte slug — deterministik sıra ("indeks atılabilir" invariantı).

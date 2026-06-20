@@ -20,15 +20,15 @@ function rlinks(content: unknown[]): any[] {
   return (content as any[]).filter((c) => c.type === "resource_link");
 }
 
-test("TOOL_DEFS: 13 tool, her birinde inputSchema + outputSchema", () => {
-  assert.equal(TOOL_DEFS.length, 13);
+test("TOOL_DEFS: 21 tool, her birinde inputSchema + outputSchema", () => {
+  assert.equal(TOOL_DEFS.length, 21);
   for (const t of TOOL_DEFS) {
     assert.ok(t.inputSchema && t.inputSchema.type === "object", `${t.name} inputSchema`);
     assert.ok(t.outputSchema && t.outputSchema.type === "object", `${t.name} outputSchema`);
   }
   assert.deepEqual(
     TOOL_DEFS.map((t) => t.name).sort(),
-    ["capture_session", "forget", "gap_report", "improve", "ops_report", "provenance", "record_decision", "remember", "resolve_conflict", "search", "skill_export", "think", "verify"]
+    ["attention", "capture_session", "chunks", "conflicts", "entities", "forget", "gap_report", "get_node", "graph_query", "graph_snapshot", "improve", "ops_report", "provenance", "record_decision", "remember", "resolve_conflict", "search", "skill_export", "supporting_chunks", "think", "verify"]
   );
 });
 

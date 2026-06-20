@@ -8,7 +8,7 @@ Search hands you raw pages. Vitrus hands you **the answer + its sources + what i
 all in **portable Markdown files you own**.
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache--2.0-6366F1.svg)](./LICENSE)
-[![tests](https://img.shields.io/badge/tests-200%2B%20·%204%20gates-22c55e.svg)](#testing--gates)
+[![tests](https://img.shields.io/badge/tests-295%20·%205%20gates-22c55e.svg)](#testing--gates)
 [![MCP](https://img.shields.io/badge/MCP-stdio%20%2B%20HTTP-A855F7.svg)](#agents-mcp)
 [![runtime](https://img.shields.io/badge/runtime-Bun-black.svg)](https://bun.sh)
 
@@ -41,6 +41,16 @@ That gap box is the point of the project. Every answer ships with its **sources*
 **deterministic** list of what your knowledge base *hasn't* documented. There is no LLM in the gap
 detector, so it can't hallucinate a gap into existence — or out of it. A claim with no source is
 shown as a gap, never papered over.
+
+## What's new (2026-06)
+
+- **Agent-native API hub.** Point Vitrus at any REST endpoint and pull it into the brain: `vitrus ingest rest --config <c.json>` (method, headers, params, body + response→record mapping). The cloud dashboard ships a visual API-integration drawer.
+- **`--explain` ranking attribution.** `vitrus search "<q>" --explain` prints each hit's score factors: vector/bm25/entity ranks + tier/cosine and the new **graph-adjacency / cross-source** boosts.
+- **Graph-signal ranking.** A deterministic, ACL-safe re-scoring after hybrid search: results connected to other top hits, or corroborated across sources, rise.
+- **Native Voyage + ZeroEntropy embedders** (Matryoshka-fit to the frozen `vector(1536)` schema — no migration).
+- **MCP surface 13 → 21 tools** (`entities`, `graph_query`, `get_node`, `chunks`, `attention`, `conflicts`, …; content tools are ACL fail-closed).
+- **One-command capture.** `vitrus capture "<note>"` (arg/file/stdin) + a watched inbox folder (`vitrus ingest inbox <dir>`) for mobile capture.
+- **12 prebuilt skills.** `vitrus skills list|install` — a validated SKILL.md library that teaches agents how to use Vitrus.
 
 Three design rules hold everywhere:
 

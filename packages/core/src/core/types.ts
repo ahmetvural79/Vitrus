@@ -205,6 +205,8 @@ export interface SearchOpts {
   mode?: Mode;
   /** B2: yalnız bu kapsam (veya global/null) düğümleri getir. */
   scope?: string;
+  /** M3.1: graf-sinyali yeniden-skorlama (adjacency + cross-source teyidi). Varsayılan açık; false ile ham RRF. */
+  graphSignals?: boolean;
 }
 
 /** Değişmez retrieval kaydı ("doc X'i kim gördü?"). */

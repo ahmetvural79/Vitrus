@@ -19,6 +19,17 @@ export function l2normalize(v: number[]): number[] {
   return v.map((x) => x / norm);
 }
 
+/**
+ * Embedding'i donmuş şema boyutuna (varsayılan 1536) uyarla: uzunsa baştan kes
+ * (Matryoshka-güvenli — Voyage/ZeroEntropy en önemli boyutları başa koyar), kısaysa
+ * sıfırla doldur. Çağıran sonra l2normalize eder → cosine anlamlı kalır.
+ */
+export function fitDim(v: number[], target: number): number[] {
+  if (v.length === target) return v;
+  if (v.length > target) return v.slice(0, target);
+  return [...v, ...new Array(target - v.length).fill(0)];
+}
+
 /** Sentez için kullanılabilir hit'ler (boş içerik elenir, maxFacts ile kırpılır). */
 export function selectUsable(hits: SearchHit[], maxFacts: number): SearchHit[] {
   return hits.filter((h) => h.node.content.trim().length > 0).slice(0, maxFacts);

@@ -4,8 +4,9 @@
 // resource_link (git-Markdown kaynağa: vitrus://node/<slug> + dış uri).
 
 import type { BrainEngine } from "../core/engine.js";
-import type { KnowledgeNode, TypedEdge, AclEntry, NodeType } from "../core/types.js";
+import type { KnowledgeNode, TypedEdge, AclEntry, NodeType, EdgeType } from "../core/types.js";
 import { buildSurface } from "../surface/surface.js";
+import { explainFactors } from "../search/explain.js";
 import { skillFileToMarkdown } from "../skill/skill-file.js";
 import { skillToBundle, slugifyName } from "../skill/skill-export.js";
 import { validateSkillFile } from "../skill/skill-file.js";
@@ -53,6 +54,7 @@ export const TOOL_DEFS: McpToolDef[] = [
       properties: {
         query: { type: "string", description: "arama sorgusu" },
         limit: { type: "integer", minimum: 1, maximum: 50, default: 10 },
+        explain: { type: "boolean", default: false, description: "her sonuç için skor faktör dökümü (vector/bm25/entity sırası + boost'lar) ekle" },
       },
       required: ["query"],
     },
@@ -69,6 +71,7 @@ export const TOOL_DEFS: McpToolDef[] = [
               vectorRank: { type: ["integer", "null"] },
               bm25Rank: { type: ["integer", "null"] },
               cosine: { type: ["number", "null"] },
+              explanation: { type: "array", items: { type: "string" }, description: "explain=true ise skor faktör dökümü" },
             },
             required: ["slug", "score"],
           },
@@ -343,6 +346,63 @@ export const TOOL_DEFS: McpToolDef[] = [
       required: ["slug", "persisted"],
     },
   },
+  // ── M3.3: mevcut motor yeteneklerini MCP'ye açan ek araçlar ──
+  {
+    name: "entities",
+    title: "Varlık listesi",
+    description: "Beyindeki varlıkları (kişi/servis/karar/ekip…) anma sıklığına göre listeler. minMentions ile eşik. LLM'siz.",
+    inputSchema: { type: "object", properties: { minMentions: { type: "integer", minimum: 1, default: 1 } } },
+    outputSchema: { type: "object", properties: { entities: { type: "array", items: { type: "object" } } }, required: ["entities"] },
+  },
+  {
+    name: "graph_query",
+    title: "Tipli graf sorgusu",
+    description: "Bir düğümden tipli kenarla bağlı düğümleri getirir (ör. owns → bir servisin sahibi, reports_to → kime rapor verir). Anchor ACL-korumalı.",
+    inputSchema: { type: "object", properties: { slug: { type: "string" }, edgeType: { type: "string", description: "works_at|member_of|reports_to|owns|depends_on|… (boş = tümü)" } }, required: ["slug"] },
+    outputSchema: { type: "object", properties: { nodes: { type: "array", items: { type: "object" } } }, required: ["nodes"] },
+  },
+  {
+    name: "get_node",
+    title: "Düğüm getir",
+    description: "Tek düğümü slug ile getirir (içerik + frontmatter + provenance). ACL-korumalı (yetkisiz → bulunamadı).",
+    inputSchema: { type: "object", properties: { slug: { type: "string" } }, required: ["slug"] },
+    outputSchema: { type: "object", properties: { found: { type: "boolean" }, slug: { type: "string" }, content: { type: ["string", "null"] } }, required: ["found"] },
+  },
+  {
+    name: "chunks",
+    title: "Düğüm chunk'ları",
+    description: "Bir düğümün chunk'larını sırayla getirir (denetlenebilirlik). ACL-korumalı.",
+    inputSchema: { type: "object", properties: { slug: { type: "string" } }, required: ["slug"] },
+    outputSchema: { type: "object", properties: { chunks: { type: "array", items: { type: "object" } } }, required: ["chunks"] },
+  },
+  {
+    name: "supporting_chunks",
+    title: "Destekleyen chunk'lar",
+    description: "Bir sorguyu en çok destekleyen chunk'ları (skorlu) getirir — 'hangi pasaj cevabı verdi'. ACL-korumalı.",
+    inputSchema: { type: "object", properties: { slug: { type: "string" }, query: { type: "string" } }, required: ["slug", "query"] },
+    outputSchema: { type: "object", properties: { chunks: { type: "array", items: { type: "object" } } }, required: ["chunks"] },
+  },
+  {
+    name: "graph_snapshot",
+    title: "Graf anlık görüntüsü",
+    description: "Görselleştirme için düğüm+kenar anlık görüntüsü (bayat/gap işaretli). limit ile kırpılır (sessiz kırpma yok).",
+    inputSchema: { type: "object", properties: { limit: { type: "integer", minimum: 1, maximum: 500, default: 120 } } },
+    outputSchema: { type: "object", properties: { nodes: { type: "array" }, edges: { type: "array" }, truncated: { type: "integer" } }, required: ["nodes", "edges"] },
+  },
+  {
+    name: "attention",
+    title: "Dikkat bekleyenler",
+    description: "Proaktif 'dikkatini bekleyenler': bayat kalıcı bilgi + çözülmemiş incident + yaşlanan boşluk (şiddete göre sıralı). now ISO (boşsa sunucu saati).",
+    inputSchema: { type: "object", properties: { now: { type: "string", description: "ISO zaman (boşsa sunucu saati)" } } },
+    outputSchema: { type: "object", properties: { items: { type: "array", items: { type: "object" } } }, required: ["items"] },
+  },
+  {
+    name: "conflicts",
+    title: "Çelişkiler",
+    description: "Kaynaklar çeliştiğinde iki tarafıyla (slug+başlık) + çözüm durumuyla listeler (resolve_conflict ile çöz). Deterministik.",
+    inputSchema: { type: "object", properties: {} },
+    outputSchema: { type: "object", properties: { conflicts: { type: "array", items: { type: "object" } } }, required: ["conflicts"] },
+  },
 ];
 
 /** Ajan-yazma için markdown KAYNAĞI (sahiplik): remember/forget/improve burayı günceller. */
@@ -366,6 +426,7 @@ export async function callTool(
   const principals = ctx.principals;
   switch (name) {
     case "search": {
+      const explain = args.explain === true;
       const hits = await engine.search(String(args.query ?? ""), {
         limit: typeof args.limit === "number" ? args.limit : 10,
         principals,
@@ -378,9 +439,12 @@ export async function callTool(
           vectorRank: h.vectorRank ?? null,
           bm25Rank: h.bm25Rank ?? null,
           cosine: h.boosts?.cosine ?? null,
+          ...(explain ? { explanation: explainFactors(h) } : {}),
         })),
       };
-      const lines = hits.map((h) => `${h.score.toFixed(4)}  ${h.node.slug}`).join("\n");
+      const lines = hits
+        .map((h) => `${h.score.toFixed(4)}  ${h.node.slug}` + (explain ? "\n" + explainFactors(h).map((l) => "    " + l).join("\n") : ""))
+        .join("\n");
       return {
         structuredContent: structured,
         content: [
@@ -693,6 +757,107 @@ export async function callTool(
           resourceLink(slug, null),
         ],
         isError: false,
+      };
+    }
+
+    case "entities": {
+      const min = typeof args.minMentions === "number" ? args.minMentions : 1;
+      const entities = await engine.listEntities(min);
+      return {
+        structuredContent: { entities },
+        content: [text(entities.map((e) => `${e.name} (${e.entityType}) ×${e.mentionCount}`).join("\n") || "(varlık yok)")],
+      };
+    }
+
+    case "graph_query": {
+      const slug = String(args.slug ?? "");
+      const anchor = await engine.getNode(slug, principals); // fail-closed: anchor'ı göremiyorsan boş dön
+      if (!anchor) return { structuredContent: { nodes: [] }, content: [text(`erişilemez veya yok: ${slug}`)] };
+      const edgeType = args.edgeType ? (String(args.edgeType) as EdgeType) : undefined;
+      const nodes = await engine.graphQuery(slug, edgeType);
+      const view = nodes.map((n) => ({ slug: n.slug, title: n.title, type: n.type }));
+      return {
+        structuredContent: { nodes: view },
+        content: [
+          text(view.map((n) => `${n.slug} (${n.type})`).join("\n") || "(bağlı düğüm yok)"),
+          ...view.map((n) => resourceLink(n.slug, null)),
+        ],
+      };
+    }
+
+    case "get_node": {
+      const slug = String(args.slug ?? "");
+      const node = await engine.getNode(slug, principals); // ACL: yetkisiz → bulunamadı (sızdırmaz)
+      if (!node) return { structuredContent: { found: false, slug, content: null }, content: [text(`bulunamadı: ${slug}`)] };
+      return {
+        structuredContent: {
+          found: true,
+          slug,
+          type: node.type,
+          tier: node.tier,
+          title: node.title,
+          content: node.content,
+          frontmatter: node.frontmatter,
+          provenance: node.provenance,
+        },
+        content: [text(`# ${node.title}\n${node.content}`), resourceLink(slug, node.provenance.uri)],
+      };
+    }
+
+    case "chunks": {
+      const slug = String(args.slug ?? "");
+      const node = await engine.getNode(slug, principals); // ACL gate
+      if (!node) return { structuredContent: { chunks: [] }, content: [text(`erişilemez veya yok: ${slug}`)] };
+      const chunks = await engine.getChunks(slug);
+      return {
+        structuredContent: { chunks },
+        content: [
+          text(chunks.map((c) => `[${c.idx}] ${c.content.slice(0, 200)}`).join("\n\n") || "(chunk yok)"),
+          resourceLink(slug, node.provenance.uri),
+        ],
+      };
+    }
+
+    case "supporting_chunks": {
+      const slug = String(args.slug ?? "");
+      const query = String(args.query ?? "");
+      const node = await engine.getNode(slug, principals); // ACL gate
+      if (!node) return { structuredContent: { chunks: [] }, content: [text(`erişilemez veya yok: ${slug}`)] };
+      const chunks = await engine.supportingChunks(slug, query);
+      return {
+        structuredContent: { chunks },
+        content: [
+          text(chunks.map((c) => `[${c.idx}] (${c.score.toFixed(3)}) ${c.content.slice(0, 200)}`).join("\n\n") || "(eşleşen chunk yok)"),
+          resourceLink(slug, node.provenance.uri),
+        ],
+      };
+    }
+
+    case "graph_snapshot": {
+      const limit = typeof args.limit === "number" ? args.limit : 120;
+      const snap = await engine.graphSnapshot({ limit });
+      return {
+        structuredContent: snap,
+        content: [text(`${snap.nodes.length} düğüm · ${snap.edges.length} kenar${snap.truncated ? ` · +${snap.truncated} çizilmedi (limit)` : ""}`)],
+      };
+    }
+
+    case "attention": {
+      const now = String(args.now ?? new Date().toISOString());
+      const items = await engine.attention(now);
+      return {
+        structuredContent: { items },
+        content: [text(items.map((i) => `[${i.severity}] ${i.kind}: ${i.message}`).join("\n") || "(dikkat bekleyen yok)")],
+      };
+    }
+
+    case "conflicts": {
+      const conflicts = await engine.findConflicts();
+      return {
+        structuredContent: { conflicts },
+        content: [
+          text(conflicts.map((c) => `${c.resolved ? "✓" : "⚠"} "${c.a.slug}" ⇄ "${c.b.slug}" (${c.kind})`).join("\n") || "(çelişki yok)"),
+        ],
       };
     }
 
