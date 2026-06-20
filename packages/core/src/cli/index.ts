@@ -55,6 +55,21 @@ async function readStdin(): Promise<string> {
   return Buffer.concat(chunks).toString("utf8");
 }
 
+/** Bir klasörü recursive tarayıp .md dosyalarını {path (klasöre göreli), content} olarak döndürür (import-*). */
+function walkMd(dir: string): { path: string; content: string }[] {
+  const out: { path: string; content: string }[] = [];
+  const walk = (d: string, rel: string) => {
+    for (const ent of readdirSync(d, { withFileTypes: true })) {
+      if (ent.name.startsWith(".")) continue; // .obsidian, .trash, .git vb. atla
+      const r = rel ? `${rel}/${ent.name}` : ent.name;
+      if (ent.isDirectory()) walk(join(d, ent.name), r);
+      else if (ent.name.toLowerCase().endsWith(".md")) out.push({ path: r, content: readFileSync(join(d, ent.name), "utf8") });
+    }
+  };
+  walk(dir, "");
+  return out;
+}
+
 async function main() {
   const [cmd, ...rest] = process.argv.slice(2);
 
@@ -179,6 +194,53 @@ async function main() {
       await engine.refreshEntities();
       await engine.refreshSalience();
       console.log(`Obsidian import: ${files.length} file → ${r.upserted} node (namespace ${conn.slugPrefix}). [[link]]'ler mentions kenarına çözüldü.`);
+      break;
+    }
+
+    case "import-gbrain": {
+      // GBrain göçü — GBrain markdown'ı (frontmatter + [[wikilink]], Vitrus'la aynı desen) → working/gbrain/.
+      const dir = arg || "./gbrain";
+      if (!existsSync(dir)) { console.log(`gbrain dir not found: ${dir}`); break; }
+      await engine.init();
+      const { ObsidianConnector } = await import("../connectors/obsidian.js");
+      const files = walkMd(dir);
+      if (files.length === 0) { console.log(`no .md files under ${dir}`); break; }
+      const conn = new ObsidianConnector(files, { now: new Date().toISOString(), slugPrefix: "working/gbrain/" });
+      const r = await ingest(engine, conn);
+      await engine.refreshEntities();
+      await engine.refreshSalience();
+      console.log(`GBrain import: ${files.length} file → ${r.upserted} node (namespace working/gbrain/).`);
+      break;
+    }
+
+    case "import-notion": {
+      // Notion markdown export → working/notion/ (hash-strip + [text](file.md) link çözümü).
+      const dir = arg || "./notion-export";
+      if (!existsSync(dir)) { console.log(`notion export not found: ${dir}`); break; }
+      await engine.init();
+      const { NotionConnector } = await import("../connectors/notion-import.js");
+      const files = walkMd(dir);
+      if (files.length === 0) { console.log(`no .md files under ${dir}`); break; }
+      const conn = new NotionConnector(files, { now: new Date().toISOString() });
+      const r = await ingest(engine, conn);
+      await engine.refreshEntities();
+      await engine.refreshSalience();
+      console.log(`Notion import: ${files.length} file → ${r.upserted} node (namespace working/notion/).`);
+      break;
+    }
+
+    case "import-chat": {
+      // ChatGPT/Claude export (conversations.json) → working/chat/ (her konuşma = bir note).
+      const file = arg;
+      if (!file || !existsSync(file)) { console.log("usage: vitrus import-chat <conversations.json>  (ChatGPT veya Claude export)"); break; }
+      await engine.init();
+      const { ChatImportConnector } = await import("../connectors/chat-import.js");
+      const json = JSON.parse(readFileSync(file, "utf8"));
+      const conn = new ChatImportConnector(json, { now: new Date().toISOString() });
+      const r = await ingest(engine, conn);
+      await engine.refreshEntities();
+      await engine.refreshSalience();
+      console.log(`Chat import: ${r.upserted} conversation → note (namespace working/chat/).`);
       break;
     }
 
