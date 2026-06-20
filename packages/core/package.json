@@ -21,6 +21,7 @@
     "./api-hub": { "bun": "./src/api-hub/index.ts", "default": "./dist/api-hub/index.js" },
     "./onboard": { "bun": "./src/onboard/index.ts", "default": "./dist/onboard/index.js" },
     "./schema": { "bun": "./src/schema/index.ts", "default": "./dist/schema/index.js" },
+    "./maintenance": { "bun": "./src/maintenance/index.ts", "default": "./dist/maintenance/index.js" },
     "./verify": { "bun": "./src/verify/verify.ts", "default": "./dist/verify/verify.js" },
     "./sql-driver": { "bun": "./src/core/sql-driver.ts", "default": "./dist/core/sql-driver.js" },
     "./types": { "bun": "./src/core/types.ts", "default": "./dist/core/types.js" },

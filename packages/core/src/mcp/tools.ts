@@ -461,6 +461,13 @@ export const TOOL_DEFS: McpToolDef[] = [
     inputSchema: { type: "object", properties: { type: { type: "string" } }, required: ["type"] },
     outputSchema: { type: "object", properties: { name: { type: "string" }, kind: { type: "string" }, description: { type: "string" } }, required: ["name", "kind"] },
   },
+  {
+    name: "briefing",
+    title: "Brifing (scheduled-prep)",
+    description: "Deterministik 'sabah brifingi' (M3.8): dikkat bekleyenler + boşluk sayıları + açık çelişkiler + düzeltilebilir uncited (kaynak önerisi olan). Ajanın güne hazır başlaması için. now ISO (boşsa sunucu saati).",
+    inputSchema: { type: "object", properties: { now: { type: "string", description: "ISO zaman (boşsa sunucu saati)" } } },
+    outputSchema: { type: "object", properties: { generatedAt: { type: "string" }, attention: { type: "array", items: { type: "object" } }, gapCounts: { type: "object" }, openConflicts: { type: "integer" }, fixableUncited: { type: "integer" } }, required: ["generatedAt", "attention", "openConflicts", "fixableUncited"] },
+  },
 ];
 
 /** Ajan-yazma için markdown KAYNAĞI (sahiplik): remember/forget/improve burayı günceller. */
@@ -1002,6 +1009,13 @@ export async function callTool(
         if (ex.inferredVerbs?.length) lines.push("  fiil ipuçları: " + ex.inferredVerbs.join(", "));
       }
       return { structuredContent: ex, content: [text(lines.join("\n"))] };
+    }
+
+    case "briefing": {
+      const { buildBriefing, renderBriefing } = await import("../maintenance/dream-analysis.js");
+      const now = String(args.now ?? new Date().toISOString());
+      const b = await buildBriefing(engine, now);
+      return { structuredContent: b, content: [text(renderBriefing(b))] };
     }
 
     default:

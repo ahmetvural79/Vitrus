@@ -685,6 +685,15 @@ async function main() {
       break;
     }
 
+    case "brief":
+    case "briefing": {
+      // M3.8 — scheduled-prep "sabah brifingi": dikkat + boşluk + çelişki + düzeltilebilir-uncited (deterministik).
+      const { buildBriefing, renderBriefing } = await import("../maintenance/dream-analysis.js");
+      await engine.init();
+      console.log(renderBriefing(await buildBriefing(engine, new Date().toISOString())));
+      break;
+    }
+
     case "dedup": {
       const pairs = await engine.dedupReview(0.92);
       if (pairs.length === 0) {

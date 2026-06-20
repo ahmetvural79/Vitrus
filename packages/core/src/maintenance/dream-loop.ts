@@ -16,6 +16,12 @@ import {
   type StaleSkill,
   type SkillRef,
 } from "./skill-curator.js";
+import {
+  suggestCitations,
+  contradictionDigest,
+  type CitationSuggestion,
+  type ContradictionItem,
+} from "./dream-analysis.js";
 
 export interface DreamReport {
   entities: number;
@@ -26,6 +32,8 @@ export interface DreamReport {
   gapKinds: Record<string, number>;
   skillifyCandidates: SkillifyCandidate[]; // A2: tekrarlayan sorgu → skill adayı
   staleSkills: StaleSkill[]; // A2: provenance silinmiş/süpersede → bayat skill
+  citationSuggestions: CitationSuggestion[]; // M3.8: uncited düğüm → kaynaklı eşleşme önerisi
+  contradictions: ContradictionItem[]; // M3.8: açık çelişkiler + daha-yeni-taraf ipucu
 }
 
 export async function dreamLoop(
@@ -75,7 +83,22 @@ export async function dreamLoop(
   const skillify = skillifyCandidates(audit);
   const staleSkills = await findStaleSkills(engine, opts.skills ?? []);
 
-  return { entities, merges, staleDecayed, expired, gaps: gaps.length, gapKinds, skillifyCandidates: skillify, staleSkills };
+  // 6) M3.8 derinleştirme: citation-fix (uncited → kaynaklı eşleşme) + contradiction digest (daha-yeni ipucu).
+  const citationSuggestions = await suggestCitations(engine, { limit: 20 });
+  const contradictions = await contradictionDigest(engine);
+
+  return {
+    entities,
+    merges,
+    staleDecayed,
+    expired,
+    gaps: gaps.length,
+    gapKinds,
+    skillifyCandidates: skillify,
+    staleSkills,
+    citationSuggestions,
+    contradictions,
+  };
 }
 
 export function renderDream(r: DreamReport): string {
@@ -87,5 +110,8 @@ export function renderDream(r: DreamReport): string {
   if (kinds) out.push(`  gap kinds: ${kinds}`);
   if (r.skillifyCandidates.length) out.push(`  skillify candidates: ${r.skillifyCandidates.length}`);
   if (r.staleSkills.length) out.push(`  stale skills: ${r.staleSkills.length}`);
+  const fixable = r.citationSuggestions.filter((c) => c.suggestion).length;
+  if (fixable) out.push(`  citation fixes: ${fixable}/${r.citationSuggestions.length} uncited have a suggested source`);
+  if (r.contradictions.length) out.push(`  contradictions: ${r.contradictions.length} open (${r.contradictions.filter((c) => c.newer).length} with a newer-side hint)`);
   return out.join("\n");
 }
