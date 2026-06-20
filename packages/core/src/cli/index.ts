@@ -3,7 +3,7 @@
 // Vitrus CLI. Faz 0 hedefi: init / import / sync / search / think çalışsın.
 // `sync` depo → sidecar (kaynak-üstü graf) yazar; motor retrieval'ı sonraki tasklar.
 
-import { writeFileSync, mkdirSync, readFileSync, existsSync } from "node:fs";
+import { writeFileSync, mkdirSync, readFileSync, existsSync, readdirSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { PgliteEngine } from "../core/pglite-engine.js";
@@ -154,6 +154,31 @@ async function main() {
       await engine.refreshSalience();
       const totalEdges = all.reduce((n, x) => n + x.edges.length, 0);
       console.log(`${all.length} nodes imported, ${totalEdges} typed edges (sidecar written).`);
+      break;
+    }
+
+    case "import-obsidian": {
+      // Obsidian vault → Vitrus: .md'leri oku, frontmatter + [[wikilink]] çevir, ingest (namespace working/obsidian/).
+      const dir = arg || "./vault";
+      if (!existsSync(dir)) { console.log(`vault not found: ${dir}`); break; }
+      await engine.init();
+      const { ObsidianConnector } = await import("../connectors/obsidian.js");
+      const files: { path: string; content: string }[] = [];
+      const walk = (d: string, rel: string) => {
+        for (const ent of readdirSync(d, { withFileTypes: true })) {
+          if (ent.name.startsWith(".")) continue; // .obsidian, .trash vb. atla
+          const r = rel ? `${rel}/${ent.name}` : ent.name;
+          if (ent.isDirectory()) walk(join(d, ent.name), r);
+          else if (ent.name.toLowerCase().endsWith(".md")) files.push({ path: r, content: readFileSync(join(d, ent.name), "utf8") });
+        }
+      };
+      walk(dir, "");
+      if (files.length === 0) { console.log(`no .md files under ${dir}`); break; }
+      const conn = new ObsidianConnector(files, { now: new Date().toISOString() });
+      const r = await ingest(engine, conn);
+      await engine.refreshEntities();
+      await engine.refreshSalience();
+      console.log(`Obsidian import: ${files.length} file → ${r.upserted} node (namespace ${conn.slugPrefix}). [[link]]'ler mentions kenarına çözüldü.`);
       break;
     }
 
