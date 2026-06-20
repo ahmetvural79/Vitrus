@@ -20,10 +20,22 @@ export interface Curriculum {
   gaps: { kind: string; message: string }[];
 }
 
-// Pedagojik sıra: bağlam → ekip → kişiler → servisler → kararlar → politika → ...
-const TYPE_ORDER = ["company", "team", "person", "service", "decision", "policy", "document", "concept", "incident", "meeting", "note"];
+// Pedagojik sıra: bağlam → ekip → kişiler → servisler → kararlar → politika → olay → ... → belge/not en sonda
+// (commit/PR "document" düğümleri öğrenme yolunda en az değerli; gerçek kararlar/politikalar/olaylar önce gelir).
+const TYPE_ORDER = ["company", "team", "person", "service", "decision", "policy", "incident", "concept", "meeting", "document", "note"];
 const rank = (t: string) => { const i = TYPE_ORDER.indexOf(t); return i < 0 ? TYPE_ORDER.length : i; };
 const leaf = (slug: string) => { const p = slug.split("/"); return p[p.length - 1] || slug; };
+
+// Otomasyon/bot gürültüsü: dependabot/renovate/codecov PR'ları + "chore(deps): bump ..." commit'leri.
+// Bir insanın öğrenme yolu için değersiz → müfredattan VE "belgesiz" boşluklardan düşülür.
+// Slug ("durable/people/dependabot[bot") VEYA başlık ("chore(deps): bump cobra ...") eşleşirse gürültü.
+const NOISE = /dependabot|renovate|codecov|\[bot\b|chore\(|^chore:|\bbump\b/i;
+const isNoise = (slug: string, title: string) => NOISE.test(slug) || NOISE.test(title);
+
+// Boş/placeholder başlıklar ("Untitled", "New task", "Yeni Not", "test"...) — öğrenme yolunda değersiz.
+// Gerçek (kısa olsa da anlamlı) başlıklar korunur; yalnız jenerik placeholder'lar düşülür.
+const PLACEHOLDER = /^(untitled|new (task|note|page|document|doc)|task \d+|adsız|isimsiz|yeni (görev|not|sayfa|belge)|test|asdf?|deneme)$/i;
+const isPlaceholder = (title: string) => !title.trim() || PLACEHOLDER.test(title.trim());
 
 function whyFor(type: string, role: string): string {
   switch (type) {
@@ -45,7 +57,7 @@ export async function buildCurriculum(
 ): Promise<Curriculum> {
   const hits = await engine.search(role, { limit: 30, principals: opts.principals });
   const steps: CurriculumStep[] = hits
-    .filter((h) => !["session", "source"].includes(h.node.type))
+    .filter((h) => !["session", "source"].includes(h.node.type) && !isNoise(h.node.slug, h.node.title) && !isPlaceholder(h.node.title))
     .map((h) => ({
       slug: h.node.slug,
       title: h.node.title || leaf(h.node.slug),
@@ -72,6 +84,7 @@ export async function buildCurriculum(
   const leaves = ordered.map((s) => leaf(s.slug).toLowerCase());
   const allGaps = await engine.findGaps();
   const gaps = allGaps
+    .filter((g) => !isNoise(g.message, g.message)) // bot/otomasyon boşluklarını gizle (ör. "dependabot[bot")
     .filter((g) => leaves.some((l) => g.message.toLowerCase().includes(l) || g.relatedNodeIds.some((id) => id.toLowerCase().includes(l))))
     .slice(0, 6)
     .map((g) => ({ kind: g.kind, message: g.message }));

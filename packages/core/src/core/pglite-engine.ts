@@ -762,8 +762,8 @@ export class PgliteEngine implements BrainEngine {
   async graphSnapshot(opts: { limit?: number; asof?: string } = {}): Promise<GraphSnapshot> {
     const limit = opts.limit ?? 60;
     const asof = opts.asof ?? null; // bi-temporal zaman-yolculuğu: o tarihteki graf
-    const { rows: nodeRows } = await this.db.query<{ id: string; slug: string; type: NodeType; tier: Tier }>(
-      `SELECT id, slug, type, tier FROM nodes WHERE deleted_at IS NULL
+    const { rows: nodeRows } = await this.db.query<{ id: string; slug: string; type: NodeType; tier: Tier; title: string }>(
+      `SELECT id, slug, type, tier, title FROM nodes WHERE deleted_at IS NULL
          AND ($2::text IS NULL OR org_id IS NOT DISTINCT FROM $2)
        ORDER BY salience DESC, slug ASC LIMIT $1`,
       [limit + 1, this.org ?? null]
@@ -789,12 +789,26 @@ export class PgliteEngine implements BrainEngine {
     const gapIds = new Set((await this.findGaps()).flatMap((g) => g.relatedNodeIds));
 
     return {
-      nodes: nodes.map((n) => ({ slug: n.slug, type: n.type, tier: n.tier, stale: stale.has(n.id), hasGap: gapIds.has(n.id) })),
+      nodes: nodes.map((n) => ({ slug: n.slug, type: n.type, tier: n.tier, title: n.title, stale: stale.has(n.id), hasGap: gapIds.has(n.id) })),
       edges: edgeRows
         .filter((e) => idSet.has(e.from_node) && idSet.has(e.to_node))
         .map((e) => ({ from: id2slug.get(e.from_node)!, to: id2slug.get(e.to_node)!, type: e.edge_type })),
       truncated,
     };
+  }
+
+  async nodesMeta(ids: string[]): Promise<{ id: string; slug: string; title: string }[]> {
+    // Verilen düğüm id'leri → hafif meta (slug + insan-okunur title). Gap/graph etiketlerini
+    // ham slug yerine içerikle (başlık) zenginleştirir. Org-scoped (graphSnapshot gibi —
+    // yüzey zaten org-admin; per-node ACL principal'i YOK, yalnız etiket çözümü).
+    if (ids.length === 0) return [];
+    const { rows } = await this.db.query<{ id: string; slug: string; title: string }>(
+      `SELECT id, slug, title FROM nodes
+       WHERE id = ANY($1::text[]) AND deleted_at IS NULL
+         AND ($2::text IS NULL OR org_id IS NOT DISTINCT FROM $2)`,
+      [ids, this.org ?? null]
+    );
+    return rows;
   }
 
   async findGaps(): Promise<Gap[]> {

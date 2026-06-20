@@ -251,6 +251,7 @@ export interface GraphNodeView {
   slug: string;
   type: NodeType;
   tier: Tier;
+  title?: string; // insan-okunur etiket (UUID slug yerine) — M5 graph okunabilirliği
   stale: boolean; // supersede edilmiş (bayat)
   hasGap: boolean; // bir boşluğa dahil
 }

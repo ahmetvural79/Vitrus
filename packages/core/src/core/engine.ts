@@ -58,6 +58,8 @@ export interface BrainEngine {
   // --- okuma: graf ---
   /** Tek düğümü slug ile getir; principals verilirse ACL uygulanır (yetkisiz → null). */
   getNode(slug: string, principals?: string[]): Promise<KnowledgeNode | null>;
+  /** Düğüm id'leri → hafif meta (slug + title). Gap/graph etiketlerini ham slug yerine içerikle gösterir; org-scoped. */
+  nodesMeta(ids: string[]): Promise<{ id: string; slug: string; title: string }[]>;
   /** Bi-temporal: varsayılan yalnız "şimdi doğru" (expired_at IS NULL); includeExpired ile tarih; asof ile zaman-yolculuğu (o tarihte canlı kenarlar). */
   getConnections(nodeId: string, maxHops?: number, opts?: { includeExpired?: boolean; asof?: string }): Promise<TypedEdge[]>;
   /** Bir düğümün chunk'ları (denetlenebilirlik — F6). */
