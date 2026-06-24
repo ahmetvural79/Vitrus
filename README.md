@@ -356,6 +356,28 @@ Signing up is free — the Free plan includes the full dashboard with 1 brain ·
 design: your knowledge stays portable Markdown, and leaving the cloud means `vitrus import` on your
 own machine.
 
+## Vitrus Enterprise
+
+For **regulated, on-prem and air-gapped** deployments — governments, **municipalities**, factories — there is
+**[Vitrus Enterprise](https://github.com/ahmetvural79/vitrus-enterprise-info)**, which extends this open engine to
+**relational databases** (MySQL/Postgres) without modifying it. The thesis is preserved on structured data:
+*the LLM proposes, a deterministic guard decides — and it shows the gap instead of bluffing.*
+
+- **Text-to-SQL with a deterministic anti-hallucination guard** — NL question → candidate `SELECT` → an LLM-free
+  guard (single-statement · read-only/SELECT-only · no unknown tables/columns · PII policy · mandatory limit) →
+  read-only execution → answer **+ provenance**. Can't answer safely → an honest gap, not a confident wrong number.
+- **Verified-query memory** — confirmed `question → SQL` pairs become deterministic, auditable few-shot memory, so
+  accuracy compounds over time (only guard-passed queries are remembered).
+- **Structured glass-box** — deterministic data-quality gaps (orphan FKs, stale rows, missing PKs), claim
+  verification with evidence, full provenance, and a KVKK/GDPR audit trail with PII masking.
+- **Fully local & air-gapped** — local LLM (Ollama/Gemma) + local embedder (BGE-M3/Qwen3); data never leaves the
+  building. One-command `docker compose`, or an air-gapped USB bundle.
+- **White-label operator console** — a single-tenant dashboard over your existing MySQL/Postgres, connected
+  **read-only by construction** (SELECT-only user · read-only transaction · statement timeout · AST guard).
+
+The core in this repository stays open; Enterprise is the commercial layer built on top.
+Details → **[vitrus-enterprise-info](https://github.com/ahmetvural79/vitrus-enterprise-info)**.
+
 ## Contributing
 
 Issues and PRs welcome — the [roadmap](https://github.com/ahmetvural79/Vitrus/issues) is real deferred
