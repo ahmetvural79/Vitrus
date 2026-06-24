@@ -52,7 +52,7 @@ claude mcp add vitrus -- bunx @vitrus/mcp                     # wire into Claude
 
 ## Signature feature: gap analysis
 
-Mem0, Zep, Glean — they all answer; **none tell you what they don't know.** This is Vitrus's single sharpest difference, and it's **deterministic and auditable** (no LLM, no fabrication): every gap is derived from graph structure or explicit text signals.
+Other company-brain and enterprise-search tools answer — but **none tell you what they don't know.** This is Vitrus's single sharpest difference, and it's **deterministic and auditable** (no LLM, no fabrication): every gap is derived from graph structure or explicit text signals.
 
 Five gap kinds: **missing** (referenced but undocumented) · **contradiction** (conflicting edges) · **stale** (superseded) · **single-point** (bus-factor risk) · **uncited** (an event with no source).
 
@@ -63,7 +63,7 @@ And the newest surface — **proactive, not reactive**: `vitrus watch` turns gap
 Same deterministic, no-LLM engine, three more surfaces (each with a CLI command **and** an MCP tool):
 
 - **🗺️ Ops-map** — `vitrus ops` · MCP `ops_report`. Reads the company as a graph and flags operational inefficiencies: **unowned** services, **bus-factor** (single-person) risk, **bottlenecks** (overloaded hubs), **broken handoffs** (depending on superseded ground), and **redundant tools** (embedding-similar services). Severity-ranked; every finding cites the real nodes — evidence, not a consultant's guess.
-- **⚖️ Conflict resolution** — `vitrus conflicts` / `vitrus resolve` · MCP `resolve_conflict`. Detects contradictions and shows **both sides**; resolve by choosing the winner — the loser is superseded (marked stale) and the conflict closes. Nothing overwritten in silence. *(Glen admits it doesn't resolve conflicting observations; Vitrus does.)*
+- **⚖️ Conflict resolution** — `vitrus conflicts` / `vitrus resolve` · MCP `resolve_conflict`. Detects contradictions and shows **both sides**; resolve by choosing the winner — the loser is superseded (marked stale) and the conflict closes. Nothing overwritten in silence.
 - **✍️ Write-back loop** — `record_decision`, `capture_session` · `vitrus hooks install`. Agents **read before they act and write after they decide** — decisions persist with their sources, so the brain stays live without anyone writing docs. A new decision that contradicts an existing one is flagged back to the agent (never a silent overwrite).
 
 ## Live connectors
@@ -124,7 +124,7 @@ Tools: `search` · `think` · `gap_report` · `provenance` · `get_node` · `ver
 
 ## Comparison
 
-| | Plain search | ChatGPT | Glean | **Vitrus** |
+| | Plain search | ChatGPT | Enterprise search | **Vitrus** |
 |---|---|---|---|---|
 | Answer (not pages) | ✗ | ✓ | ✓ | ✓ |
 | Source / provenance | partial | weak | ✓ | ✓ |
