@@ -360,7 +360,7 @@ own machine.
 
 For **regulated, on-prem and air-gapped** deployments — governments, **municipalities**, factories — there is
 **[Vitrus Enterprise](https://github.com/ahmetvural79/vitrus-enterprise-info)**, which extends this open engine to
-**relational databases** (MySQL/Postgres) without modifying it. The thesis is preserved on structured data:
+**relational databases** (MySQL/Postgres) and **ERP systems (SAP, Canias)** without modifying it. The thesis is preserved on structured data:
 *the LLM proposes, a deterministic guard decides — and it shows the gap instead of bluffing.*
 
 - **Text-to-SQL with a deterministic anti-hallucination guard** — NL question → candidate `SELECT` → an LLM-free
@@ -368,12 +368,18 @@ For **regulated, on-prem and air-gapped** deployments — governments, **municip
   read-only execution → answer **+ provenance**. Can't answer safely → an honest gap, not a confident wrong number.
 - **Verified-query memory** — confirmed `question → SQL` pairs become deterministic, auditable few-shot memory, so
   accuracy compounds over time (only guard-passed queries are remembered).
+- **Governed MCP for agents** — an MCP server exposes the SQL brain (`sql_ask`, `sql_run`, `list_tables`,
+  `verify_claim`, `teach_query`) with the guard, row-level security, column masking, and audit enforced **inside
+  every tool**, so Claude / Cursor / Codex / OpenClaw agents query governed data without bypassing it. stdio + HTTP.
 - **Structured glass-box** — deterministic data-quality gaps (orphan FKs, stale rows, missing PKs), claim
   verification with evidence, full provenance, and a KVKK/GDPR audit trail with PII masking.
 - **Fully local & air-gapped** — local LLM (Ollama/Gemma) + local embedder (BGE-M3/Qwen3); data never leaves the
   building. One-command `docker compose`, or an air-gapped USB bundle.
-- **White-label operator console** — a single-tenant dashboard over your existing MySQL/Postgres, connected
-  **read-only by construction** (SELECT-only user · read-only transaction · statement timeout · AST guard).
+- **Modern white-label console** — a single-tenant **dark** dashboard over your existing databases, connected
+  **read-only by construction** (SELECT-only user · read-only transaction · statement timeout · AST guard), with
+  deterministic client-side charts (zero code execution) and suggested starter / follow-up questions.
+- **ERP & connectors** — MSSQL / Oracle / SAP HANA drivers for **SAP** (S/4HANA via HANA SQL & CDS; ECC via a
+  read-only replica) and **Canias**, plus token-REST connectors (GitHub, GitLab, Jira, Notion, Zendesk, Stripe, Salesforce…).
 
 The core in this repository stays open; Enterprise is the commercial layer built on top.
 Details → **[vitrus-enterprise-info](https://github.com/ahmetvural79/vitrus-enterprise-info)**.
