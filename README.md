@@ -58,8 +58,12 @@ That gap box is the point of the project. Every answer ships with its **sources*
 detector, so it can't hallucinate a gap into existence — or out of it. A claim with no source is
 shown as a gap, never papered over.
 
-## What's new (2026-06)
+## What's new (2026-07)
 
+- **Answers — and alerts — in Slack.** A `/vitrus <question>` command replies with the glass-box answer
+  right in a channel, and a **proactive digest** posts what needs attention (the `vitrus watch` radar —
+  stale knowledge, unresolved incidents, aging gaps) on a schedule, *before you ask*. Fail-closed so
+  private channels never leak; deterministic, no LLM. *(Vitrus Cloud — see below.)*
 - **Bring your existing notes.** `vitrus import-obsidian` (vault + `[[wikilinks]]` → typed edges),
   `vitrus import-notion` (Notion markdown export), `vitrus import-chat` (ChatGPT/Claude
   `conversations.json`), `vitrus import-gbrain` (migrate from GBrain) — all map into the same glass-box brain.
@@ -333,6 +337,11 @@ operations, not capability:
   per-sync permission capture. Live sync: Slack, GitHub, Notion, Linear, Google Drive, **Jira,
   Confluence, GitLab, Discord**, and an **MCP bridge** (any MCP server's resources become a source);
   plus real-time WhatsApp webhook ingest and staged Email/Calendar imports.
+- **Answers where you work (Slack)** — a `/vitrus <question>` command returns the glass-box answer —
+  sources + the yellow *what-it-doesn't-know* box — right in a channel, fail-closed so private channels
+  never leak. And a **proactive attention digest** posts what's decaying (stale knowledge, unresolved
+  incidents, aging gaps) into a channel on a schedule — the `vitrus watch` radar delivered where your
+  team already is, no LLM guessing.
 - **A per-org MCP endpoint** — `https://api.vitrus.dev/t/<org>/mcp` with bearer auth, so your agents
   read the same brain your team does. Claude Code, Codex, Cursor, **OpenClaw**, **Hermes** — any MCP
   client over Streamable HTTP (copy-paste setup per agent on the dashboard's *Agent access* page):
