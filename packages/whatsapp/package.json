@@ -1,0 +1,32 @@
+{
+  "name": "@vitrus/whatsapp",
+  "version": "0.1.0",
+  "description": "Vitrus WhatsApp agent — join WhatsApp project groups, pipe them into your Vitrus company brain, and answer in-chat. Phase 0 spike (Baileys linked-device). Apache-2.0.",
+  "type": "module",
+  "license": "Apache-2.0",
+  "bin": {
+    "vitrus-whatsapp": "src/index.ts"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node --import tsx src/index.ts",
+    "test": "node --test --import tsx \"test/**/*.test.ts\"",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@whiskeysockets/baileys": "^6.7.0",
+    "pino": "^9.0.0",
+    "qrcode-terminal": "^0.12.0"
+  },
+  "peerDependencies": {
+    "@vitrus/core": "*"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/qrcode-terminal": "^0.12.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.4.0"
+  }
+}

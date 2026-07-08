@@ -1,0 +1,4 @@
+.wa-auth/
+captured/
+node_modules/
+*.tsbuildinfo
